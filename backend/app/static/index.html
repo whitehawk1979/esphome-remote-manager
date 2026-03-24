@@ -957,6 +957,8 @@
     </div>
     
     <script>
+        // Version: 20260324183757
+        console.log("ESPHome Remote Manager v1.2.0 - 20260324183757");
         // Version: 1774376468
         const API_BASE = window.location.origin;
         let devices = [];
@@ -1219,24 +1221,8 @@
                         </div>
                     `;
                     document.getElementById('yaml-entities').innerHTML = haEntitiesHtml;
-                }
-                    
-                    // Parse YAML for defined components
-                    const yamlText = yamlData.yaml || '';
-                    const definedComponents = parseYamlComponents(yamlText);
-                    
-                    if (definedComponents.length > 0) {
-                        entitiesHtml += `<div style="margin-top: 16px;">
-                            <h4 style="margin-bottom: 8px; color: var(--primary);">YAML Components</h4>
-                            <div style="display: flex; flex-wrap: wrap; gap: 6px;">
-                                ${definedComponents.map(c => `<span style="padding: 3px 10px; background: var(--code-bg); color: #4fc3f7; border-radius: 4px; font-size: 11px; font-family: 'Roboto Mono', monospace;">${c}</span>`).join('')}
-                            </div>
-                        </div>`;
-                    }
-                    
-                    entitiesContainer.innerHTML = entitiesHtml;
                 } else {
-                    document.getElementById('yaml-entities').innerHTML = '<div style="color: var(--text-secondary);">Failed to load entities</div>';
+                    document.getElementById('yaml-entities').innerHTML = '<div style="color: var(--text-secondary);">Failed to load device details</div>';
                 }
             } catch (e) {
                 console.error('Failed to load YAML:', e);
