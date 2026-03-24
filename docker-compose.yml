@@ -26,9 +26,19 @@ services:
       
       # Server Configuration
       - PORT=8000
+      
+      # mDNS Discovery
+      - ENABLE_MDNS=${ENABLE_MDNS:-true}
     
     ports:
       - "${PORT:-8080}:8000"
+    
+    # mDNS requires host network or port 5353/udp
+    # Option 1: Use host network (recommended for mDNS)
+    # network_mode: host
+    # Option 2: Expose mDNS port
+    # ports:
+    #   - "5353:5353/udp"
     
     networks:
       - homeassistant
