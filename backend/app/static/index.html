@@ -247,6 +247,8 @@
         
         .btn-outline:hover { background: var(--primary); color: white; }
         
+        .btn-sm { padding: 4px 12px; font-size: 13px; }
+        
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
         
         /* YAML Editor */
@@ -804,11 +806,18 @@
             <div class="card">
                 <div class="card-header">
                     <h2><span class="material-icons">settings</span> Settings</h2>
+                    <button class="btn btn-primary" onclick="saveAllSettings()">
+                        <span class="material-icons">save</span>
+                        Save All
+                    </button>
                 </div>
                 <div class="card-body">
                     <!-- Current Configuration -->
-                    <div class="settings-section">
-                        <h3><span class="material-icons">info</span> Current Configuration</h3>
+                    <div class="settings-section" id="section-config">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <h3 style="margin: 0;"><span class="material-icons">info</span> Current Configuration</h3>
+                            <span style="color: var(--text-secondary); font-size: 12px;">Read-only (from environment)</span>
+                        </div>
                         <div class="settings-grid">
                             <div class="settings-item">
                                 <label>ESPHome API URL</label>
@@ -822,24 +831,31 @@
                     </div>
 
                     <!-- MQTT Configuration -->
-                    <div class="settings-section">
-                        <h3><span class="material-icons">router</span> MQTT Configuration</h3>
+                    <div class="settings-section" id="section-mqtt">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <h3 style="margin: 0;"><span class="material-icons">router</span> MQTT Configuration</h3>
+                            <div>
+                                <button class="btn btn-outline btn-sm" onclick="toggleEdit('mqtt')" id="mqtt-edit-btn" style="padding: 4px 12px;">
+                                    <span class="material-icons" style="font-size: 16px;">edit</span> Edit
+                                </button>
+                            </div>
+                        </div>
                         <div class="settings-grid">
                             <div class="settings-item">
                                 <label for="mqtt-broker">MQTT Broker</label>
-                                <input type="text" id="mqtt-broker" placeholder="192.168.1.43">
+                                <input type="text" id="mqtt-broker" placeholder="192.168.1.43" disabled>
                             </div>
                             <div class="settings-item">
                                 <label for="mqtt-port">Port</label>
-                                <input type="number" id="mqtt-port" placeholder="1883" value="1883">
+                                <input type="number" id="mqtt-port" placeholder="1883" value="1883" disabled>
                             </div>
                             <div class="settings-item">
                                 <label for="mqtt-user">Username</label>
-                                <input type="text" id="mqtt-user" placeholder="mqtt">
+                                <input type="text" id="mqtt-user" placeholder="mqtt" disabled>
                             </div>
                             <div class="settings-item">
                                 <label for="mqtt-pass">Password</label>
-                                <input type="password" id="mqtt-pass" placeholder="••••••••">
+                                <input type="password" id="mqtt-pass" placeholder="••••••••" disabled>
                             </div>
                         </div>
                         <div class="settings-status">
@@ -847,19 +863,34 @@
                                 <span class="material-icons">sync</span> Checking...
                             </span>
                         </div>
+                        <div class="settings-actions" id="mqtt-actions" style="display: none;">
+                            <button class="btn btn-success btn-sm" onclick="saveSection('mqtt')">
+                                <span class="material-icons" style="font-size: 16px;">check</span> Save
+                            </button>
+                            <button class="btn btn-outline btn-sm" onclick="cancelEdit('mqtt')">
+                                <span class="material-icons" style="font-size: 16px;">close</span> Cancel
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Home Assistant Configuration -->
-                    <div class="settings-section">
-                        <h3><span class="material-icons">home</span> Home Assistant Configuration</h3>
+                    <div class="settings-section" id="section-ha">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <h3 style="margin: 0;"><span class="material-icons">home</span> Home Assistant Configuration</h3>
+                            <div>
+                                <button class="btn btn-outline btn-sm" onclick="toggleEdit('ha')" id="ha-edit-btn" style="padding: 4px 12px;">
+                                    <span class="material-icons" style="font-size: 16px;">edit</span> Edit
+                                </button>
+                            </div>
+                        </div>
                         <div class="settings-grid">
                             <div class="settings-item">
                                 <label for="ha-url">Home Assistant URL</label>
-                                <input type="text" id="ha-url" placeholder="http://192.168.1.43:8123">
+                                <input type="text" id="ha-url" placeholder="http://192.168.1.43:8123" disabled>
                             </div>
                             <div class="settings-item">
                                 <label for="ha-mcp-url">MCP Endpoint</label>
-                                <input type="text" id="ha-mcp-url" placeholder="http://192.168.1.43:9583/...">
+                                <input type="text" id="ha-mcp-url" placeholder="http://192.168.1.43:9583/..." disabled>
                             </div>
                         </div>
                         <div class="settings-status">
@@ -867,11 +898,21 @@
                                 <span class="material-icons">sync</span> Checking...
                             </span>
                         </div>
+                        <div class="settings-actions" id="ha-actions" style="display: none;">
+                            <button class="btn btn-success btn-sm" onclick="saveSection('ha')">
+                                <span class="material-icons" style="font-size: 16px;">check</span> Save
+                            </button>
+                            <button class="btn btn-outline btn-sm" onclick="cancelEdit('ha')">
+                                <span class="material-icons" style="font-size: 16px;">close</span> Cancel
+                            </button>
+                        </div>
                     </div>
 
                     <!-- MQTT Discovery Status -->
-                    <div class="settings-section">
-                        <h3><span class="material-icons">sensors</span> MQTT Discovery Status</h3>
+                    <div class="settings-section" id="section-discovery">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <h3 style="margin: 0;"><span class="material-icons">sensors</span> MQTT Discovery Status</h3>
+                        </div>
                         <div class="settings-grid">
                             <div class="settings-item">
                                 <label>Discovery Enabled</label>
@@ -894,16 +935,6 @@
                                 <span class="material-icons">publish</span> Republish Discovery
                             </button>
                         </div>
-                    </div>
-
-                    <!-- Actions -->
-                    <div class="settings-actions">
-                        <button class="btn btn-primary" onclick="saveSettings()">
-                            <span class="material-icons">save</span> Save Settings
-                        </button>
-                        <button class="btn btn-secondary" onclick="loadSettings()">
-                            <span class="material-icons">refresh</span> Reload
-                        </button>
                     </div>
                 </div>
             </div>
@@ -1503,15 +1534,37 @@
                 document.getElementById('device-id').textContent = health.device_id || 'esphome_remote_manager';
                 document.getElementById('discovery-enabled').textContent = health.mqtt_discovery_enabled ? 'Yes' : 'No';
                 
-                // Load MQTT settings from environment
-                document.getElementById('mqtt-broker').value = health.mqtt_broker || '192.168.1.43';
-                document.getElementById('mqtt-port').value = health.mqtt_port || '1883';
-                document.getElementById('mqtt-user').value = health.mqtt_user || 'mqtt';
-                document.getElementById('mqtt-pass').value = '••••••••'; // Placeholder
+                // Load MQTT settings from environment or localStorage
+                const savedMqtt = localStorage.getItem('settings_mqtt');
+                if (savedMqtt) {
+                    const mqttSettings = JSON.parse(savedMqtt);
+                    document.getElementById('mqtt-broker').value = mqttSettings['mqtt-broker'] || health.mqtt_broker || '192.168.1.43';
+                    document.getElementById('mqtt-port').value = mqttSettings['mqtt-port'] || health.mqtt_port || '1883';
+                    document.getElementById('mqtt-user').value = mqttSettings['mqtt-user'] || health.mqtt_user || 'mqtt';
+                    document.getElementById('mqtt-pass').value = mqttSettings['mqtt-pass'] || '••••••••';
+                } else {
+                    document.getElementById('mqtt-broker').value = health.mqtt_broker || '192.168.1.43';
+                    document.getElementById('mqtt-port').value = health.mqtt_port || '1883';
+                    document.getElementById('mqtt-user').value = health.mqtt_user || 'mqtt';
+                    document.getElementById('mqtt-pass').value = '••••••••';
+                }
                 
-                // Load HA settings
-                document.getElementById('ha-url').value = health.ha_url || 'http://192.168.1.43:8123';
-                document.getElementById('ha-mcp-url').value = health.ha_mcp_url || '';
+                // Load HA settings from environment or localStorage
+                const savedHA = localStorage.getItem('settings_ha');
+                if (savedHA) {
+                    const haSettings = JSON.parse(savedHA);
+                    document.getElementById('ha-url').value = haSettings['ha-url'] || health.ha_url || 'http://192.168.1.43:8123';
+                    document.getElementById('ha-mcp-url').value = haSettings['ha-mcp-url'] || health.ha_mcp_url || '';
+                } else {
+                    document.getElementById('ha-url').value = health.ha_url || 'http://192.168.1.43:8123';
+                    document.getElementById('ha-mcp-url').value = health.ha_mcp_url || '';
+                }
+                
+                // Disable all inputs by default
+                document.querySelectorAll('#section-mqtt input, #section-ha input').forEach(input => {
+                    input.disabled = true;
+                    input.style.background = 'var(--bg)';
+                });
                 
                 // Update status
                 updateMQTTStatus('success', 'Connected');
@@ -1894,8 +1947,90 @@ modbus_controller:
             }, 5000);
         }
         
+        // Settings Edit Functions
+        function toggleEdit(section) {
+            const inputs = document.querySelectorAll(`#section-${section} input`);
+            const editBtn = document.getElementById(`${section}-edit-btn`);
+            const actionsDiv = document.getElementById(`${section}-actions`);
+            
+            const isDisabled = inputs[0].disabled;
+            
+            inputs.forEach(input => {
+                input.disabled = !isDisabled;
+                if (isDisabled) {
+                    input.style.background = 'var(--card-bg)';
+                    input.style.borderColor = 'var(--primary)';
+                } else {
+                    input.style.background = '';
+                    input.style.borderColor = '';
+                }
+            });
+            
+            if (isDisabled) {
+                editBtn.innerHTML = '<span class="material-icons" style="font-size: 16px;">edit_off</span> Cancel';
+                actionsDiv.style.display = 'flex';
+            } else {
+                editBtn.innerHTML = '<span class="material-icons" style="font-size: 16px;">edit</span> Edit';
+                actionsDiv.style.display = 'none';
+            }
+        }
+        
+        function saveSection(section) {
+            const inputs = document.querySelectorAll(`#section-${section} input`);
+            const values = {};
+            
+            inputs.forEach(input => {
+                values[input.id] = input.value;
+            });
+            
+            // Store in localStorage for persistence
+            localStorage.setItem(`settings_${section}`, JSON.stringify(values));
+            
+            // Disable inputs
+            toggleEdit(section);
+            
+            showToast('success', 'Settings Saved', `${section.toUpperCase()} settings saved successfully!`);
+        }
+        
+        function cancelEdit(section) {
+            const inputs = document.querySelectorAll(`#section-${section} input`);
+            const editBtn = document.getElementById(`${section}-edit-btn`);
+            const actionsDiv = document.getElementById(`${section}-actions`);
+            
+            // Reset to original values
+            loadSettings();
+            
+            // Disable inputs
+            inputs.forEach(input => {
+                input.disabled = true;
+                input.style.background = '';
+                input.style.borderColor = '';
+            });
+            
+            editBtn.innerHTML = '<span class="material-icons" style="font-size: 16px;">edit</span> Edit';
+            actionsDiv.style.display = 'none';
+        }
+        
+        async function saveAllSettings() {
+            // Save all sections
+            const sections = ['mqtt', 'ha'];
+            
+            sections.forEach(section => {
+                const inputs = document.querySelectorAll(`#section-${section} input`);
+                const values = {};
+                
+                inputs.forEach(input => {
+                    values[input.id] = input.value;
+                });
+                
+                localStorage.setItem(`settings_${section}`, JSON.stringify(values));
+            });
+            
+            showToast('success', 'All Settings Saved', 'All settings have been saved to local storage.');
+        }
+        
         async function saveSettings() {
-            alert('Settings are configured via environment variables.\nRestart the container to apply changes.');
+            showToast('info', 'Settings', 'Settings are configured via environment variables. Edit individual sections and save.');
         }
         
         function updateMQTTStatus(status, text) {
