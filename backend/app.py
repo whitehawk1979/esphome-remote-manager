@@ -116,16 +116,26 @@ async def get_devices_from_dashboard() -> List[Dict[str, Any]]:
                     
                     # Parse configured devices
                     for device in data.get("configured", []):
+                        deployed_version = device.get("deployed_version", "unknown")
+                        current_version = device.get("current_version", "unknown")
+                        
+                        # Check if update is available
+                        update_available = False
+                        if deployed_version != "unknown" and current_version != "unknown":
+                            # Compare versions (simple string comparison for now)
+                            update_available = deployed_version != current_version
+                        
                         devices.append({
                             "name": device.get("name", "unknown"),
                             "configuration": device.get("configuration", ""),
                             "platform": device.get("target_platform", "unknown"),
-                            "deployed_version": device.get("deployed_version", "unknown"),
-                            "current_version": device.get("current_version", "unknown"),
+                            "deployed_version": deployed_version,
+                            "current_version": current_version,
                             "address": device.get("address", ""),
                             "web_port": device.get("web_port", 80),
                             "status": "configured",
-                            "integrations": device.get("loaded_integrations", [])
+                            "integrations": device.get("loaded_integrations", []),
+                            "update_available": update_available
                         })
                     
                     return devices

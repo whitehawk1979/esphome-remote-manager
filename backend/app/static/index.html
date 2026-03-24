@@ -661,12 +661,12 @@
                     <div class="device-body">
                         <div class="device-info">
                             <div class="device-info-item">
-                                <label>Version</label>
-                                <span>${device.deployed_version || '-'}</span>
+                                <label>Deployed</label>
+                                <span style="${device.update_available ? 'color: var(--success); font-weight: 600;' : ''}">${device.deployed_version || '-'}</span>
                             </div>
                             <div class="device-info-item">
-                                <label>ESPHome</label>
-                                <span>${device.current_version || '-'}</span>
+                                <label>Available</label>
+                                <span style="${device.update_available ? 'color: var(--warning); font-weight: 600;' : ''}">${device.current_version || '-'}</span>
                             </div>
                             <div class="device-info-item">
                                 <label>Address</label>
@@ -680,7 +680,8 @@
                         <div class="device-status">
                             <div class="status-dot ${device.status || 'unknown'}"></div>
                             <span>${device.status || 'Unknown'}</span>
-                            ${device.ha_entities && device.ha_entities.length > 0 ? `<span style="margin-left:auto">(${device.ha_entities.length} entities)</span>` : ''}
+                            ${device.update_available ? `<span class="update-badge" style="margin-left: auto; background: var(--warning); color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500;">Update Available</span>` : ''}
+                            ${device.ha_entities && device.ha_entities.length > 0 ? `<span style="margin-left:${device.update_available ? '8px' : 'auto'}">(${device.ha_entities.length} entities)</span>` : ''}
                         </div>
                         <div class="device-actions">
                             <button class="btn btn-primary" onclick="event.stopPropagation(); compileDevice('${device.name}')">
