@@ -289,6 +289,85 @@ async def list_devices():
     }
 
 
+@app.get("/api/device/{device_name}")
+async def get_device(device_name: str):
+    """Get device details"""
+    devices = await get_devices_from_dashboard()
+    
+    for device in devices:
+        if device["name"] == device_name:
+            # Get HA entities from state
+            ha_entities = []
+            for entity in state.get("ha_entities", []):
+                if entity.get("device", "").lower() == device_name.lower():
+                    ha_entities.append(entity)
+            
+            # Try to fetch HA entities via MCP if available
+            try:
+                ha_entities = await fetch_ha_entities_for_device(device_name, device.get("integrations", []))
+            except Exception as e:
+                logger.error(f"Failed to fetch HA entities: {e}")
+            
+            return {
+                "success": True,
+                "device": {
+                    **device,
+                    "ha_entities": ha_entities
+                }
+            }
+    
+    return {"success": False, "error": "Device not found", "device": None}
+
+
+async def fetch_ha_entities_for_device(device_name: str, integrations: list) -> list:
+    """Fetch Home Assistant entities for a device"""
+    entities = []
+    
+    if not HA_MCP_URL:
+        return entities
+    
+    try:
+        # Search for entities matching device name
+        async with aiohttp.ClientSession() as session:
+            # Use MCP to search entities
+            url = HA_MCP_URL
+            payload = {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "tools/call",
+                "params": {
+                    "name": "ha_search_entities",
+                    "arguments": {"query": device_name}
+                }
+            }
+            
+            async with session.post(url, json=payload, timeout=aiohttp.ClientTimeout(total=10)) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    # Parse MCP response
+                    if "result" in data:
+                        content = data["result"].get("content", [])
+                        for item in content:
+                            if item.get("type") == "text":
+                                # Parse entities from text
+                                text = item.get("text", "")
+                                # Entity format: entity_id, friendly_name, state
+                                for line in text.split("\n"):
+                                    if line.strip() and device_name.lower() in line.lower():
+                                        parts = line.split("|")
+                                        if len(parts) >= 3:
+                                            entities.append({
+                                                "entity_id": parts[0].strip(),
+                                                "friendly_name": parts[1].strip() if len(parts) > 1 else parts[0].strip(),
+                                                "state": parts[2].strip() if len(parts) > 2 else "unknown",
+                                                "domain": parts[0].strip().split(".")[0] if "." in parts[0] else "unknown"
+                                            })
+    except Exception as e:
+        logger.error(f"Failed to fetch HA entities: {e}")
+    
+    return entities
+
+
 @app.get("/api/yaml/{device_name}")
 async def get_yaml(device_name: str):
     """Get YAML configuration for a device"""

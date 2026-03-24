@@ -995,20 +995,100 @@
             }
             
             try {
-                const response = await fetch(`${API_BASE}/api/yaml/${deviceName}`);
-                const data = await response.json();
+                // Load YAML
+                const yamlResponse = await fetch(`${API_BASE}/api/yaml/${deviceName}`);
+                const yamlData = await yamlResponse.json();
                 
-                if (data.success) {
-                    document.getElementById('yaml-content').value = data.yaml;
-                    currentYaml = data.yaml;
+                if (yamlData.success) {
+                    document.getElementById('yaml-content').value = yamlData.yaml;
+                    currentYaml = yamlData;
                     addLog(deviceName, 'info', 'Configuration loaded');
                 } else {
-                    alert('Failed to load configuration: ' + (data.error || 'Unknown error'));
+                    alert('Failed to load configuration: ' + (yamlData.error || 'Unknown error'));
+                    return;
+                }
+                
+                // Load device details with entities
+                const deviceResponse = await fetch(`${API_BASE}/api/device/${deviceName}`);
+                const deviceData = await deviceResponse.json();
+                
+                if (deviceData.success && deviceData.device) {
+                    const device = deviceData.device;
+                    const entitiesContainer = document.getElementById('yaml-entities');
+                    
+                    // Display defined entities from YAML integrations
+                    const integrations = device.integrations || [];
+                    const haEntities = device.ha_entities || [];
+                    
+                    let entitiesHtml = '';
+                    
+                    // Show integrations defined in YAML
+                    entitiesHtml += `<div style="margin-bottom: 16px;">
+                        <h4 style="margin-bottom: 8px; color: var(--primary);">Defined Integrations</h4>
+                        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                            ${integrations.map(i => `<span style="padding: 4px 12px; background: var(--bg); border-radius: 16px; font-size: 12px; font-family: 'Roboto Mono', monospace;">${i}</span>`).join('')}
+                        </div>
+                    </div>`;
+                    
+                    // Show HA entities
+                    if (haEntities.length > 0) {
+                        entitiesHtml += `<div style="margin-bottom: 16px;">
+                            <h4 style="margin-bottom: 8px; color: var(--primary);">Home Assistant Entities (${haEntities.length})</h4>
+                            <div class="entities-grid">
+                                ${haEntities.map(e => `
+                                    <div class="entity-card" style="padding: 12px; background: var(--bg); border-radius: 8px;">
+                                        <div style="font-size: 11px; color: var(--primary); text-transform: uppercase; margin-bottom: 4px;">${e.domain}</div>
+                                        <div style="font-size: 14px; font-weight: 500; margin-bottom: 4px;">${e.friendly_name || e.entity_id}</div>
+                                        <div style="font-size: 12px; color: ${e.state === 'on' || e.state === 'home' ? 'var(--success)' : e.state === 'off' || e.state === 'away' ? 'var(--secondary)' : 'var(--text-secondary)'};">${e.state}</div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>`;
+                    } else {
+                        entitiesHtml += `<div style="color: var(--text-secondary); font-style: italic;">No HA entities found for this device</div>`;
+                    }
+                    
+                    // Parse YAML for defined components
+                    const yamlText = yamlData.yaml || '';
+                    const definedComponents = parseYamlComponents(yamlText);
+                    
+                    if (definedComponents.length > 0) {
+                        entitiesHtml += `<div style="margin-top: 16px;">
+                            <h4 style="margin-bottom: 8px; color: var(--primary);">YAML Components</h4>
+                            <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                                ${definedComponents.map(c => `<span style="padding: 3px 10px; background: var(--code-bg); color: #4fc3f7; border-radius: 4px; font-size: 11px; font-family: 'Roboto Mono', monospace;">${c}</span>`).join('')}
+                            </div>
+                        </div>`;
+                    }
+                    
+                    entitiesContainer.innerHTML = entitiesHtml;
+                } else {
+                    document.getElementById('yaml-entities').innerHTML = '<div style="color: var(--text-secondary);">Failed to load entities</div>';
                 }
             } catch (e) {
                 console.error('Failed to load YAML:', e);
                 alert('Failed to load configuration');
             }
+        }
+        
+        // Parse YAML for components
+        function parseYamlComponents(yaml) {
+            const components = [];
+            const lines = yaml.split('\n');
+            let currentComponent = null;
+            
+            for (const line of lines) {
+                // Match top-level components (no indentation)
+                const match = line.match(/^([a-z_]+):$/);
+                if (match && !match[1].startsWith(' ') && !match[1].startsWith('#')) {
+                    currentComponent = match[1];
+                    if (!components.includes(currentComponent) && !['esphome', 'wifi', 'api', 'ota', 'logger', 'captive_portal'].includes(currentComponent)) {
+                        components.push(currentComponent);
+                    }
+                }
+            }
+            
+            return components;
         }
         
         // Save YAML
