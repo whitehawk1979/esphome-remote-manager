@@ -606,7 +606,7 @@
             <div class="card">
                 <div class="card-header">
                     <h2><span class="material-icons">code</span> YAML Editor</h2>
-                    <div>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                         <select id="yaml-device-select" class="btn btn-outline">
                             <option value="">Select device...</option>
                         </select>
@@ -618,19 +618,158 @@
                             <span class="material-icons">save</span>
                             Save
                         </button>
+                        <button class="btn btn-outline" onclick="showNewDeviceModal()" style="border-color: var(--success); color: var(--success);">
+                            <span class="material-icons">add_circle</span>
+                            New Device
+                        </button>
                     </div>
                 </div>
                 <div class="card-body">
-                    <div class="yaml-editor">
-                        <div class="yaml-panel">
-                            <h4>Configuration</h4>
-                            <textarea id="yaml-content" class="yaml-textarea" placeholder="Select a device to load configuration..."></textarea>
+                    <div class="yaml-editor-container" style="display: grid; grid-template-columns: 250px 1fr 280px; gap: 16px; min-height: 500px;">
+                        <!-- Templates Sidebar -->
+                        <div class="templates-sidebar" style="background: var(--card-bg); border-radius: 8px; padding: 12px; overflow-y: auto;">
+                            <h4 style="margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                                <span class="material-icons" style="color: var(--primary);">description</span>
+                                Templates
+                            </h4>
+                            <div style="margin-bottom: 8px;">
+                                <input type="text" id="template-search" placeholder="Search templates..." style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 13px;">
+                            </div>
+                            <div id="templates-list" style="display: flex; flex-direction: column; gap: 4px;">
+                                <!-- Templates will be populated here -->
+                            </div>
                         </div>
-                        <div class="yaml-panel">
-                            <h4>HA Entities</h4>
-                            <div id="yaml-entities" class="entities-grid"></div>
+                        
+                        <!-- YAML Editor -->
+                        <div class="yaml-panel" style="display: flex; flex-direction: column;">
+                            <h4 style="margin-bottom: 8px;">Configuration</h4>
+                            <div style="position: relative; flex: 1;">
+                                <textarea id="yaml-content" class="yaml-textarea" placeholder="Select a device to load configuration...&#10;&#10;Or use templates from the sidebar to get started." style="height: 100%; min-height: 400px;"></textarea>
+                            </div>
+                            <div style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
+                                <button class="btn btn-outline" onclick="insertTemplate('sensor')" title="Add sensor">
+                                    <span class="material-icons" style="font-size: 16px;">sensors</span>
+                                    Sensor
+                                </button>
+                                <button class="btn btn-outline" onclick="insertTemplate('binary_sensor')" title="Add binary sensor">
+                                    <span class="material-icons" style="font-size: 16px;">toggle_on</span>
+                                    Binary
+                                </button>
+                                <button class="btn btn-outline" onclick="insertTemplate('switch')" title="Add switch">
+                                    <span class="material-icons" style="font-size: 16px;">power</span>
+                                    Switch
+                                </button>
+                                <button class="btn btn-outline" onclick="insertTemplate('light')" title="Add light">
+                                    <span class="material-icons" style="font-size: 16px;">lightbulb</span>
+                                    Light
+                                </button>
+                                <button class="btn btn-outline" onclick="insertTemplate('output')" title="Add output">
+                                    <span class="material-icons" style="font-size: 16px;">output</span>
+                                    Output
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Entities Panel -->
+                        <div class="yaml-panel" style="background: var(--card-bg); border-radius: 8px; padding: 12px; overflow-y: auto;">
+                            <h4 style="margin-bottom: 12px;">Device Info</h4>
+                            <div id="yaml-device-info" style="margin-bottom: 16px;">
+                                <div style="color: var(--text-secondary); font-size: 13px;">Select a device to see details</div>
+                            </div>
+                            <h4 style="margin-bottom: 12px;">Integrations</h4>
+                            <div id="yaml-integrations" style="margin-bottom: 16px;">
+                                <div style="color: var(--text-secondary); font-size: 13px;">-</div>
+                            </div>
+                            <h4 style="margin-bottom: 12px;">HA Entities</h4>
+                            <div id="yaml-entities" style="display: flex; flex-direction: column; gap: 8px;">
+                                <div style="color: var(--text-secondary); font-size: 13px;">Load a device to see entities</div>
+                            </div>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- New Device Modal -->
+        <div class="modal-overlay" id="new-device-modal">
+            <div class="modal" style="max-width: 500px;">
+                <div class="modal-header">
+                    <h3><span class="material-icons">add_circle</span> New Device</h3>
+                    <button class="modal-close" onclick="closeNewDeviceModal()">
+                        <span class="material-icons">close</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div style="display: flex; flex-direction: column; gap: 16px;">
+                        <div>
+                            <label style="display: block; margin-bottom: 4px; font-weight: 500;">Device Name</label>
+                            <input type="text" id="new-device-name" placeholder="e.g., living_room_light" style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px;">
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 4px; font-weight: 500;">Platform</label>
+                            <select id="new-device-platform" style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px;">
+                                <option value="esp32">ESP32</option>
+                                <option value="esp8266">ESP8266</option>
+                                <option value="esp32-s3">ESP32-S3</option>
+                                <option value="esp32-c3">ESP32-C3</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 4px; font-weight: 500;">Board</label>
+                            <select id="new-device-board" style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px;">
+                                <option value="esp32dev">esp32dev</option>
+                                <option value="nodemcu-32s">nodemcu-32s</option>
+                                <option value="esp32-s3-devkitc-1">esp32-s3-devkitc-1</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: flex; align-items: center; gap: 8px;">
+                                <input type="checkbox" id="new-device-wifi" checked>
+                                Include WiFi config
+                            </label>
+                        </div>
+                        <div>
+                            <label style="display: flex; align-items: center; gap: 8px;">
+                                <input type="checkbox" id="new-device-api" checked>
+                                Include API
+                            </label>
+                        </div>
+                        <div>
+                            <label style="display: flex; align-items: center; gap: 8px;">
+                                <input type="checkbox" id="new-device-ota" checked>
+                                Include OTA
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer" style="padding: 16px; display: flex; justify-content: flex-end; gap: 8px;">
+                    <button class="btn btn-outline" onclick="closeNewDeviceModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="createNewDevice()">
+                        <span class="material-icons">add</span>
+                        Create
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Template Insert Modal -->
+        <div class="modal-overlay" id="template-modal">
+            <div class="modal" style="max-width: 600px;">
+                <div class="modal-header">
+                    <h3 id="template-modal-title"><span class="material-icons">description</span> Insert Template</h3>
+                    <button class="modal-close" onclick="closeTemplateModal()">
+                        <span class="material-icons">close</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <pre id="template-content" style="background: var(--code-bg); color: #d4d4d4; padding: 16px; border-radius: 8px; overflow-x: auto; font-size: 13px;"></pre>
+                </div>
+                <div class="modal-footer" style="padding: 16px; display: flex; justify-content: flex-end; gap: 8px;">
+                    <button class="btn btn-outline" onclick="closeTemplateModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="insertSelectedTemplate()">
+                        <span class="material-icons">add</span>
+                        Insert
+                    </button>
                 </div>
             </div>
         </div>
@@ -1390,6 +1529,281 @@
                 updateHAStatus('error', 'Error loading settings');
             }
         }
+
+        // Template definitions
+        const TEMPLATES = {
+            sensor: {
+                name: 'Sensor',
+                template: `sensor:
+  - platform: adc
+    pin: GPIOXX
+    name: "Sensor Name"
+    update_interval: 60s
+    filters:
+      - lambda: return x * 1.0;`
+            },
+            binary_sensor: {
+                name: 'Binary Sensor',
+                template: `binary_sensor:
+  - platform: gpio
+    pin:
+      number: GPIOXX
+      mode:
+        input: true
+        pullup: true
+    name: "Binary Sensor Name"
+    filters:
+      - delayed_on: 10ms
+      - delayed_off: 10ms`
+            },
+            switch: {
+                name: 'Switch',
+                template: `switch:
+  - platform: gpio
+    pin: GPIOXX
+    name: "Switch Name"
+    id: switch_id
+    restore_mode: ALWAYS_OFF`
+            },
+            light: {
+                name: 'Light',
+                template: `light:
+  - platform: monochromatic
+    output: pwm_output
+    name: "Light Name"
+    id: light_id`
+            },
+            output: {
+                name: 'Output (PWM)',
+                template: `output:
+  - platform: ledc
+    pin: GPIOXX
+    id: pwm_output
+    frequency: 1000 Hz
+    min_power: 0.0
+    max_power: 1.0`
+            },
+            i2c: {
+                name: 'I²C Bus',
+                template: `i2c:
+  sda: GPIOXX
+  scl: GPIOXX
+  scan: true
+  id: i2c_bus`
+            },
+            spi: {
+                name: 'SPI Bus',
+                template: `spi:
+  mosi_pin: GPIOXX
+  miso_pin: GPIOXX
+  clk_pin: GPIOXX
+  id: spi_bus`
+            },
+            uart: {
+                name: 'UART',
+                template: `uart:
+  tx_pin: GPIOXX
+  rx_pin: GPIOXX
+  baud_rate: 9600
+  id: uart_bus`
+            },
+            modbus: {
+                name: 'Modbus',
+                template: `modbus:
+  id: modbus1
+  uart_id: uart_bus
+
+modbus_controller:
+  - id: modbus_controller
+    address: 0x01
+    modbus_id: modbus1
+    setup_priority: -10`
+            },
+            mqtt: {
+                name: 'MQTT',
+                template: `mqtt:
+  broker: !secret mqtt_broker
+  username: !secret mqtt_user
+  password: !secret mqtt_pass
+  topic_prefix: device_name`
+            },
+            web_server: {
+                name: 'Web Server',
+                template: `web_server:
+  port: 80
+  auth:
+    username: admin
+    password: !secret web_password`
+            }
+        };
+
+        let currentTemplate = null;
+
+        // Initialize templates
+        function initTemplates() {
+            const list = document.getElementById('templates-list');
+            if (!list) return;
+            
+            list.innerHTML = Object.entries(TEMPLATES).map(([key, val]) => `
+                <div class="template-item" style="padding: 8px; cursor: pointer; border-radius: 4px; transition: background 0.2s;" 
+                     onclick="showTemplate('${key}')"
+                     onmouseover="this.style.background='var(--bg)'"
+                     onmouseout="this.style.background='transparent'">
+                    <div style="font-size: 13px; font-weight: 500;">${val.name}</div>
+                </div>
+            `).join('');
+        }
+
+        // Show template modal
+        function showTemplate(type) {
+            currentTemplate = type;
+            const template = TEMPLATES[type];
+            if (!template) return;
+            
+            document.getElementById('template-modal-title').innerHTML = `<span class="material-icons">description</span> ${template.name} Template`;
+            document.getElementById('template-content').textContent = template.template;
+            document.getElementById('template-modal').classList.add('active');
+        }
+
+        // Close template modal
+        function closeTemplateModal() {
+            document.getElementById('template-modal').classList.remove('active');
+            currentTemplate = null;
+        }
+
+        // Insert selected template
+        function insertSelectedTemplate() {
+            if (!currentTemplate) return;
+            
+            const template = TEMPLATES[currentTemplate];
+            const textarea = document.getElementById('yaml-content');
+            const cursorPos = textarea.selectionStart;
+            const text = textarea.value;
+            
+            // Insert template at cursor position
+            const newText = text.slice(0, cursorPos) + '\n' + template.template + '\n' + text.slice(cursorPos);
+            textarea.value = newText;
+            
+            closeTemplateModal();
+            addLog('editor', 'info', `Inserted ${template.name} template`);
+        }
+
+        // Quick insert from sidebar
+        function insertTemplate(type) {
+            const template = TEMPLATES[type];
+            if (!template) return;
+            
+            const textarea = document.getElementById('yaml-content');
+            const cursorPos = textarea.selectionStart;
+            const text = textarea.value;
+            
+            // Insert template at cursor position
+            const newText = text.slice(0, cursorPos) + '\n' + template.template + '\n' + text.slice(cursorPos);
+            textarea.value = newText;
+        }
+
+        // New Device Modal
+        function showNewDeviceModal() {
+            document.getElementById('new-device-modal').classList.add('active');
+        }
+
+        function closeNewDeviceModal() {
+            document.getElementById('new-device-modal').classList.remove('active');
+        }
+
+        // Create new device
+        async function createNewDevice() {
+            const name = document.getElementById('new-device-name').value.trim();
+            if (!name) {
+                alert('Please enter a device name');
+                return;
+            }
+            
+            const platform = document.getElementById('new-device-platform').value;
+            const board = document.getElementById('new-device-board').value;
+            const includeWifi = document.getElementById('new-device-wifi').checked;
+            const includeApi = document.getElementById('new-device-api').checked;
+            const includeOta = document.getElementById('new-device-ota').checked;
+            
+            let yaml = `esphome:
+  name: ${name}
+  friendly_name: ${name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+
+`;
+            
+            // Add platform
+            if (platform === 'esp32-s3') {
+                yaml += `esp32:
+  board: ${board}
+  framework:
+    type: esp-idf
+    version: recommended
+
+`;
+            } else if (platform === 'esp32-c3') {
+                yaml += `esp32:
+  board: ${board}
+  framework:
+    type: esp-idf
+
+`;
+            } else if (platform === 'esp32') {
+                yaml += `esp32:
+  board: ${board}
+  framework:
+    type: arduino
+
+`;
+            } else {
+                yaml += `esp8266:
+  board: ${board}
+  framework:
+    type: arduino
+
+`;
+            }
+            
+            if (includeWifi) {
+                yaml += `wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+`;
+            }
+            
+            if (includeApi) {
+                yaml += `api:
+  encryption:
+    key: !secret api_key
+
+`;
+            }
+            
+            if (includeOta) {
+                yaml += `ota:
+  platform: esphome
+
+`;
+            }
+            
+            yaml += `logger:
+  level: DEBUG
+`;
+            
+            // Set the YAML content
+            document.getElementById('yaml-content').value = yaml;
+            document.getElementById('yaml-device-select').value = '';
+            
+            closeNewDeviceModal();
+            
+            // Show success message
+            addLog(name, 'info', 'New device configuration created. Don\'t forget to save!');
+        }
+
+        // Initialize templates on load
+        document.addEventListener('DOMContentLoaded', () => {
+            initTemplates();
+        });
         
         async function testMQTTConnection() {
             updateMQTTStatus('warning', 'Testing...');
