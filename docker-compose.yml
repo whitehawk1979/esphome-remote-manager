@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  esphome-remote-manager:
+    image: whitehawk1979/esphome-remote-manager:latest
+    container_name: esphome-remote-manager
+    hostname: esphome-remote-manager
+    restart: unless-stopped
+    
+    environment:
+      # ESPHome Remote Builder API
+      - ESPHOME_API_URL=${ESPHOME_API_URL:-http://192.168.1.64:7123}
+      - ESPHOME_API_USER=${ESPHOME_API_USER:-esphome}
+      - ESPHOME_API_PASS=${ESPHOME_API_PASS:-esphome}
+      - ESPHOME_DASHBOARD_URL=${ESPHOME_DASHBOARD_URL:-http://192.168.1.64:6052}
+      
+      # MQTT Configuration
+      - MQTT_BROKER=${MQTT_BROKER:-192.168.1.43}
+      - MQTT_PORT=${MQTT_PORT:-1883}
+      - MQTT_USER=${MQTT_USER:-mqtt}
+      - MQTT_PASS=${MQTT_PASS:-}
+      
+      # Device Configuration
+      - DEVICE_NAME=${DEVICE_NAME:-ESPHome Remote Manager}
+      - DEVICE_ID=${DEVICE_ID:-esphome_remote_manager}
+      
+      # Server Configuration
+      - PORT=8000
+    
+    ports:
+      - "${PORT:-8080}:8000"
+    
+    networks:
+      - homeassistant
+    
+    healthcheck:
+      test: ["CMD", "curl", "-s", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+networks:
+  homeassistant:
+    external: true

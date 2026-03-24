@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESPHome Remote Manager</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #03a9f4;
+            --primary-dark: #0288d1;
+            --secondary: #607d8b;
+            --success: #4caf50;
+            --warning: #ff9800;
+            --error: #f44336;
+            --bg: #eceff1;
+            --card-bg: #ffffff;
+            --text: #263238;
+            --text-secondary: #607d8b;
+            --border: #cfd8dc;
+            --hover: #f5f5f5;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding: 16px 24px;
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .header h1 .material-icons {
+            font-size: 32px;
+            color: var(--primary);
+        }
+        
+        .header-info {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+        
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 24px;
+            background: var(--success);
+            color: white;
+            font-size: 14px;
+        }
+        
+        .status-badge.error {
+            background: var(--error);
+        }
+        
+        .status-badge.warning {
+            background: var(--warning);
+        }
+        
+        /* Cards */
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .card-header h2 {
+            font-size: 18px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .card-header h2 .material-icons {
+            font-size: 24px;
+            color: var(--primary);
+        }
+        
+        .card-body {
+            padding: 16px 24px;
+        }
+        
+        /* Device List */
+        .device-list {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .device-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            transition: background 0.2s;
+        }
+        
+        .device-item:hover {
+            background: var(--hover);
+        }
+        
+        .device-item:last-child {
+            border-bottom: none;
+        }
+        
+        .device-info {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        
+        .device-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .device-icon .material-icons {
+            font-size: 24px;
+        }
+        
+        .device-details h3 {
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+        
+        .device-details p {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+        
+        .device-status {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        
+        .status-dot.online {
+            background: var(--success);
+        }
+        
+        .status-dot.offline {
+            background: var(--error);
+        }
+        
+        .status-dot.unknown {
+            background: var(--secondary);
+        }
+        
+        .status-text {
+            font-size: 14px;
+            color: var(--text-secondary);
+            min-width: 80px;
+        }
+        
+        .device-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .btn .material-icons {
+            font-size: 18px;
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+        
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #43a047;
+        }
+        
+        .btn-warning {
+            background: var(--warning);
+            color: white;
+        }
+        
+        .btn-warning:hover {
+            background: #f57c00;
+        }
+        
+        .btn-error {
+            background: var(--error);
+            color: white;
+        }
+        
+        .btn-error:hover {
+            background: #d32f2f;
+        }
+        
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--primary);
+            color: var(--primary);
+        }
+        
+        .btn-outline:hover {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        /* Progress */
+        .progress-bar {
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: var(--primary);
+            transition: width 0.3s;
+        }
+        
+        /* Log View */
+        .log-view {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 16px;
+            border-radius: 8px;
+            font-family: 'Fira Code', monospace;
+            font-size: 13px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .log-line {
+            margin-bottom: 4px;
+        }
+        
+        .log-time {
+            color: var(--primary);
+        }
+        
+        .log-info {
+            color: #4fc3f7;
+        }
+        
+        .log-error {
+            color: var(--error);
+        }
+        
+        .log-success {
+            color: var(--success);
+        }
+        
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+        }
+        
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .modal {
+            background: var(--card-bg);
+            border-radius: 12px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .modal-header h3 {
+            font-size: 18px;
+            font-weight: 500;
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+            color: var(--text-secondary);
+        }
+        
+        .modal-body {
+            padding: 24px;
+            overflow-y: auto;
+            max-height: calc(80vh - 130px);
+        }
+        
+        /* Loading */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            color: var(--text-secondary);
+        }
+        
+        .loading .material-icons {
+            animation: spin 1s linear infinite;
+            font-size: 32px;
+            margin-right: 12px;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        /* System Status */
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px;
+            background: var(--bg);
+            border-radius: 8px;
+        }
+        
+        .status-item .material-icons {
+            font-size: 32px;
+            color: var(--primary);
+        }
+        
+        .status-item-info h4 {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+        
+        .status-item-info p {
+            font-size: 16px;
+            font-weight: 500;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 12px;
+            }
+            
+            .header {
+                flex-direction: column;
+                gap: 16px;
+            }
+            
+            .device-item {
+                flex-direction: column;
+                gap: 12px;
+                align-items: flex-start;
+            }
+            
+            .device-actions {
+                width: 100%;
+                justify-content: flex-end;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>
+                <span class="material-icons">developer_board</span>
+                ESPHome Remote Manager
+            </h1>
+            <div class="header-info">
+                <div class="status-badge" id="status-badge">
+                    <span class="material-icons">sync</span>
+                    <span id="status-text">Loading...</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- System Status -->
+        <div class="card">
+            <div class="card-header">
+                <h2>
+                    <span class="material-icons">info</span>
+                    System Status
+                </h2>
+                <button class="btn btn-outline" onclick="refreshAll()">
+                    <span class="material-icons">refresh</span>
+                    Refresh
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="status-grid" id="system-status">
+                    <div class="status-item">
+                        <span class="material-icons">dns</span>
+                        <div class="status-item-info">
+                            <h4>ESPHome Version</h4>
+                            <p id="esphome-version">-</p>
+                        </div>
+                    </div>
+                    <div class="status-item">
+                        <span class="material-icons">smart_toy</span>
+                        <div class="status-item-info">
+                            <h4>Agent Version</h4>
+                            <p id="agent-version">-</p>
+                        </div>
+                    </div>
+                    <div class="status-item">
+                        <span class="material-icons">developer_board</span>
+                        <div class="status-item-info">
+                            <h4>Container</h4>
+                            <p id="container-status">-</p>
+                        </div>
+                    </div>
+                    <div class="status-item">
+                        <span class="material-icons">devices</span>
+                        <div class="status-item-info">
+                            <h4>Devices</h4>
+                            <p id="device-count">-</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Devices -->
+        <div class="card">
+            <div class="card-header">
+                <h2>
+                    <span class="material-icons">devices</span>
+                    ESPHome Devices
+                </h2>
+            </div>
+            <div class="card-body">
+                <div class="device-list" id="device-list">
+                    <div class="loading">
+                        <span class="material-icons">sync</span>
+                        Loading devices...
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Update Log -->
+        <div class="card">
+            <div class="card-header">
+                <h2>
+                    <span class="material-icons">history</span>
+                    Update Log
+                </h2>
+                <button class="btn btn-outline" onclick="clearLogs()">
+                    <span class="material-icons">delete</span>
+                    Clear
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="log-view" id="log-view">
+                    <div class="log-line">Waiting for updates...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal -->
+    <div class="modal-overlay" id="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modal-title">Device Update</h3>
+                <button class="modal-close" onclick="closeModal()">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+            <div class="modal-body" id="modal-body">
+                <!-- Modal content -->
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // API Base URL
+        const API_BASE = window.location.origin;
+        
+        // State
+        let devices = [];
+        let logs = [];
+        let updateIntervals = {};
+        
+        // Fetch System Health
+        async function fetchHealth() {
+            try {
+                const response = await fetch(`${API_BASE}/api/health`);
+                const data = await response.json();
+                
+                document.getElementById('esphome-version').textContent = data.esphome_version || '-';
+                document.getElementById('agent-version').textContent = data.agent_version || '-';
+                document.getElementById('container-status').textContent = 
+                    data.container_running ? 'Running' : 'Stopped';
+                document.getElementById('container-status').style.color = 
+                    data.container_running ? 'var(--success)' : 'var(--error)';
+                
+                updateStatusBadge('healthy', `ESPHome ${data.esphome_version}`);
+            } catch (e) {
+                console.error('Health check failed:', e);
+                updateStatusBadge('error', 'Connection Error');
+            }
+        }
+        
+        // Fetch Devices
+        async function fetchDevices() {
+            try {
+                const response = await fetch(`${API_BASE}/api/devices`);
+                const data = await response.json();
+                devices = data.devices || [];
+                renderDevices();
+                document.getElementById('device-count').textContent = devices.length;
+            } catch (e) {
+                console.error('Failed to fetch devices:', e);
+                document.getElementById('device-list').innerHTML = 
+                    '<div class="loading"><p style="color: var(--error)">Error loading devices</p></div>';
+            }
+        }
+        
+        // Render Devices
+        function renderDevices() {
+            const container = document.getElementById('device-list');
+            
+            if (devices.length === 0) {
+                container.innerHTML = '<div class="loading"><p>No devices found</p></div>';
+                return;
+            }
+            
+            container.innerHTML = devices.map(device => `
+                <div class="device-item" id="device-${device.name}">
+                    <div class="device-info">
+                        <div class="device-icon">
+                            <span class="material-icons">${getDeviceIcon(device.name)}</span>
+                        </div>
+                        <div class="device-details">
+                            <h3>${device.name}</h3>
+                            <p>${device.ip || 'No IP'} ${device.version ? `| v${device.version}` : ''}</p>
+                        </div>
+                    </div>
+                    <div class="device-status">
+                        <div class="status-dot ${device.status || 'unknown'}"></div>
+                        <span class="status-text">${device.status || 'unknown'}</span>
+                    </div>
+                    <div class="device-actions">
+                        <button class="btn btn-primary" onclick="compileDevice('${device.name}')" id="compile-${device.name}">
+                            <span class="material-icons">build</span>
+                            Compile
+                        </button>
+                        <button class="btn btn-success" onclick="updateDevice('${device.name}')" id="update-${device.name}">
+                            <span class="material-icons">system_update</span>
+                            Update
+                        </button>
+                        <button class="btn btn-outline" onclick="showDeviceLog('${device.name}')" id="log-${device.name}">
+                            <span class="material-icons">history</span>
+                            Log
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // Get Device Icon
+        function getDeviceIcon(name) {
+            const icons = {
+                'sensor': 'sensors',
+                'multisensor': 'sensors',
+                'radar': 'radar',
+                'switch': 'power',
+                'light': 'lightbulb',
+                'thermostat': 'thermostat',
+                'climate': 'thermostat',
+                'box': 'widgets',
+                'esp': 'developer_board'
+            };
+            
+            for (const [key, icon] of Object.entries(icons)) {
+                if (name.toLowerCase().includes(key)) {
+                    return icon;
+                }
+            }
+            return 'developer_board';
+        }
+        
+        // Update Status Badge
+        function updateStatusBadge(status, text) {
+            const badge = document.getElementById('status-badge');
+            const textEl = document.getElementById('status-text');
+            
+            badge.className = 'status-badge';
+            if (status === 'error') badge.classList.add('error');
+            if (status === 'warning') badge.classList.add('warning');
+            
+            textEl.textContent = text;
+        }
+        
+        // Compile Device
+        async function compileDevice(name) {
+            if (!confirm(`Compile ${name}?`)) return;
+            
+            const btn = document.getElementById(`compile-${name}`);
+            btn.disabled = true;
+            btn.innerHTML = '<span class="material-icons">sync</span> Compiling...';
+            
+            addLog(name, 'info', 'Starting compilation...');
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/compile/${name}`, { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.success) {
+                    addLog(name, 'info', data.message);
+                    pollStatus(name);
+                } else {
+                    addLog(name, 'error', data.message);
+                }
+            } catch (e) {
+                addLog(name, 'error', `Error: ${e.message}`);
+            }
+            
+            btn.disabled = false;
+            btn.innerHTML = '<span class="material-icons">build</span> Compile';
+        }
+        
+        // Update Device (Compile + Upload)
+        async function updateDevice(name) {
+            if (!confirm(`Update ${name}? This will compile and upload the firmware.`)) return;
+            
+            const btn = document.getElementById(`update-${name}`);
+            btn.disabled = true;
+            btn.innerHTML = '<span class="material-icons">sync</span> Updating...';
+            
+            addLog(name, 'info', 'Starting update...');
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/update/${name}`, { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.success) {
+                    addLog(name, 'info', data.message);
+                    pollStatus(name);
+                } else {
+                    addLog(name, 'error', data.message);
+                }
+            } catch (e) {
+                addLog(name, 'error', `Error: ${e.message}`);
+            }
+            
+            btn.disabled = false;
+            btn.innerHTML = '<span class="material-icons">system_update</span> Update';
+        }
+        
+        // Poll Status
+        async function pollStatus(name) {
+            if (updateIntervals[name]) {
+                clearInterval(updateIntervals[name]);
+            }
+            
+            updateIntervals[name] = setInterval(async () => {
+                try {
+                    const response = await fetch(`${API_BASE}/api/status/${name}`);
+                    const data = await response.json();
+                    
+                    if (data.status === 'compiled') {
+                        addLog(name, 'success', 'Compilation completed');
+                    } else if (data.status === 'uploaded') {
+                        addLog(name, 'success', 'Update completed successfully');
+                        clearInterval(updateIntervals[name]);
+                    } else if (data.status === 'error') {
+                        addLog(name, 'error', 'Update failed');
+                        clearInterval(updateIntervals[name]);
+                    }
+                } catch (e) {
+                    console.error('Status poll error:', e);
+                }
+            }, 2000);
+        }
+        
+        // Show Device Log
+        async function showDeviceLog(name) {
+            try {
+                const response = await fetch(`${API_BASE}/api/logs/${name}`);
+                const data = await response.json();
+                
+                const logContent = data.logs.map(log => 
+                    `<div class="log-line">
+                        <span class="log-time">${log.time}</span>
+                        <span class="log-${log.level}">[${log.level.toUpperCase()}]</span>
+                        ${log.message}
+                    </div>`
+                ).join('');
+                
+                showModal(`${name} - Log`, logContent || '<p>No logs available</p>');
+            } catch (e) {
+                showModal('Error', `<p style="color: var(--error)">Failed to load logs: ${e.message}</p>`);
+            }
+        }
+        
+        // Add Log Entry
+        function addLog(device, level, message) {
+            const time = new Date().toLocaleTimeString();
+            logs.push({ device, level, message, time });
+            
+            const logView = document.getElementById('log-view');
+            logView.innerHTML = logs.slice(-50).map(log => 
+                `<div class="log-line">
+                    <span class="log-time">${log.time}</span>
+                    <span class="log-${log.level}">[${log.device}]</span>
+                    ${log.message}
+                </div>`
+            ).join('');
+            
+            // Auto-scroll to bottom
+            logView.scrollTop = logView.scrollHeight;
+        }
+        
+        // Clear Logs
+        function clearLogs() {
+            logs = [];
+            document.getElementById('log-view').innerHTML = '<div class="log-line">Logs cleared</div>';
+        }
+        
+        // Modal Functions
+        function showModal(title, content) {
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-body').innerHTML = content;
+            document.getElementById('modal-overlay').classList.add('active');
+        }
+        
+        function closeModal() {
+            document.getElementById('modal-overlay').classList.remove('active');
+        }
+        
+        // Refresh All
+        function refreshAll() {
+            fetchHealth();
+            fetchDevices();
+        }
+        
+        // Initial Load
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchHealth();
+            fetchDevices();
+            
+            // Auto-refresh every 30 seconds
+            setInterval(fetchHealth, 30000);
+            setInterval(fetchDevices, 30000);
+        });
+        
+        // Close modal on outside click
+        document.getElementById('modal-overlay').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>
