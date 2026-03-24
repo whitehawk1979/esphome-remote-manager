@@ -25,13 +25,16 @@ ESPHOME_DASHBOARD_URL = os.getenv("ESPHOME_DASHBOARD_URL", "http://192.168.1.64:
 ESPHOME_DASHBOARD_USER = os.getenv("ESPHOME_DASHBOARD_USER", "admin")
 ESPHOME_DASHBOARD_PASS = os.getenv("ESPHOME_DASHBOARD_PASS", "admin")
 
+# Home Assistant Configuration
+HA_URL = os.getenv("HA_URL", "http://192.168.1.43:8123")
+HA_TOKEN = os.getenv("HA_TOKEN", "")
+HA_MCP_URL = os.getenv("HA_MCP_URL", "http://192.168.1.43:9583/private_nr_13FoRaKqLSc5RTG_L3w")
+
 # MQTT Configuration
 MQTT_BROKER = os.getenv("MQTT_BROKER", "192.168.1.43")
 MQTT_PORT = int(os.getenv("MQTT_PORT", "1883"))
 MQTT_USER = os.getenv("MQTT_USER", "mqtt")
 MQTT_PASS = os.getenv("MQTT_PASS", "")
-DEVICE_NAME = os.getenv("DEVICE_NAME", "ESPHome Remote Manager")
-DEVICE_ID = os.getenv("DEVICE_ID", "esphome_remote_manager")
 
 # Logging
 logging.basicConfig(level=logging.INFO)
@@ -40,8 +43,8 @@ logger = logging.getLogger(__name__)
 # FastAPI App
 app = FastAPI(
     title="ESPHome Remote Manager",
-    description="Web interface for managing ESPHome devices on a remote server",
-    version="1.0.0"
+    description="Web interface for managing ESPHome devices with Home Assistant integration",
+    version="1.1.0"
 )
 
 # CORS
@@ -61,6 +64,8 @@ if os.path.exists(static_dir):
 # In-memory state
 state = {
     "devices": [],
+    "ha_entities": [],
+    "yaml_configs": {},
     "last_update": None,
     "esphome_version": None,
     "update_status": "idle"
@@ -77,8 +82,9 @@ async def call_esphome_api(endpoint: str, method: str = "GET", data: Optional[di
     
     async with aiohttp.ClientSession(auth=auth) as session:
         try:
+            timeout = aiohttp.ClientTimeout(total=30)
             if method == "GET":
-                async with session.get(url, timeout=aiohttp.ClientTimeout(total=30)) as response:
+                async with session.get(url, timeout=timeout) as response:
                     if response.status == 200:
                         return await response.json()
                     else:
@@ -118,7 +124,8 @@ async def get_devices_from_dashboard() -> List[Dict[str, Any]]:
                             "current_version": device.get("current_version", "unknown"),
                             "address": device.get("address", ""),
                             "web_port": device.get("web_port", 80),
-                            "status": "configured"
+                            "status": "configured",
+                            "integrations": device.get("loaded_integrations", [])
                         })
                     
                     return devices
@@ -127,6 +134,111 @@ async def get_devices_from_dashboard() -> List[Dict[str, Any]]:
                     return []
     except Exception as e:
         logger.error(f"Failed to get devices from dashboard: {e}")
+        return []
+
+
+async def get_yaml_config(device_name: str) -> Dict[str, Any]:
+    """Get YAML configuration for a device"""
+    try:
+        auth = aiohttp.BasicAuth(ESPHOME_DASHBOARD_USER, ESPHOME_DASHBOARD_PASS)
+        async with aiohttp.ClientSession(auth=auth) as session:
+            # Get configuration file
+            async with session.get(f"{ESPHOME_DASHBOARD_URL}/config?configuration={device_name}.yaml", timeout=aiohttp.ClientTimeout(total=10)) as response:
+                if response.status == 200:
+                    content = await response.text()
+                    return {
+                        "success": True,
+                        "yaml": content,
+                        "device": device_name
+                    }
+                else:
+                    return {"success": False, "error": f"HTTP {response.status}"}
+    except Exception as e:
+        logger.error(f"Failed to get YAML config: {e}")
+        return {"success": False, "error": str(e)}
+
+
+async def save_yaml_config(device_name: str, yaml_content: str) -> Dict[str, Any]:
+    """Save YAML configuration for a device"""
+    try:
+        auth = aiohttp.BasicAuth(ESPHOME_DASHBOARD_USER, ESPHOME_DASHBOARD_PASS)
+        async with aiohttp.ClientSession(auth=auth) as session:
+            # Save configuration file
+            data = {"configuration": f"{device_name}.yaml", "content": yaml_content}
+            async with session.post(f"{ESPHOME_DASHBOARD_URL}/config", json=data, timeout=aiohttp.ClientTimeout(total=30)) as response:
+                if response.status == 200:
+                    return {"success": True, "message": f"Configuration saved for {device_name}"}
+                else:
+                    text = await response.text()
+                    return {"success": False, "error": f"HTTP {response.status}: {text}"}
+    except Exception as e:
+        logger.error(f"Failed to save YAML config: {e}")
+        return {"success": False, "error": str(e)}
+
+
+async def get_ha_esphome_entities() -> List[Dict[str, Any]]:
+    """Get ESPHome entities from Home Assistant via MCP"""
+    try:
+        async with aiohttp.ClientSession() as session:
+            payload = {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "tools/call",
+                "params": {
+                    "name": "ha_search_entities",
+                    "arguments": {"query": "esphome", "limit": 50}
+                }
+            }
+            async with session.post(HA_MCP_URL, json=payload, timeout=aiohttp.ClientTimeout(total=10)) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    # Parse result
+                    result = data.get("result", {})
+                    if isinstance(result, dict):
+                        content = result.get("content", [])
+                        if content and len(content) > 0:
+                            text = content[0].get("text", "{}")
+                            entities_data = json.loads(text) if isinstance(text, str) else text
+                            # Group by device
+                            devices = {}
+                            for entity in entities_data.get("results", []):
+                                entity_id = entity.get("entity_id", "")
+                                # Extract device name from entity_id
+                                # Format: sensor.multisensor_multisensor_... or switch.esp32_s3_box_3_...
+                                parts = entity_id.split(".")
+                                if len(parts) >= 2:
+                                    domain = parts[0]
+                                    name_parts = parts[1].split("_")
+                                    # Try to identify device
+                                    device_name = name_parts[0] if name_parts else "unknown"
+                                    
+                                    if device_name not in devices:
+                                        devices[device_name] = {
+                                            "name": device_name,
+                                            "entities": [],
+                                            "domains": set()
+                                        }
+                                    devices[device_name]["entities"].append({
+                                        "entity_id": entity_id,
+                                        "friendly_name": entity.get("friendly_name", ""),
+                                        "domain": domain,
+                                        "state": entity.get("state", "unknown")
+                                    })
+                                    devices[device_name]["domains"].add(domain)
+                            
+                            # Convert sets to lists for JSON
+                            result_list = []
+                            for device_name, device_data in devices.items():
+                                device_data["domains"] = list(device_data["domains"])
+                                result_list.append(device_data)
+                            
+                            return result_list
+                    return []
+                else:
+                    logger.error(f"HA MCP returned {response.status}")
+                    return []
+    except Exception as e:
+        logger.error(f"Failed to get HA entities: {e}")
         return []
 
 
@@ -148,7 +260,6 @@ async def health():
     esphome_version = "unknown"
     if "esphome_version" in result:
         esphome_version = result["esphome_version"]
-        # Clean up version string
         if esphome_version.startswith("Version: "):
             esphome_version = esphome_version.replace("Version: ", "")
     
@@ -167,7 +278,22 @@ async def health():
 async def list_devices():
     """List all ESPHome devices"""
     devices = await get_devices_from_dashboard()
+    
+    # Get HA entities for each device
+    ha_entities = await get_ha_esphome_entities()
+    
+    # Map HA entities to devices
+    ha_entity_map = {e["name"]: e for e in ha_entities}
+    
+    for device in devices:
+        device_name = device.get("name", "")
+        # Find matching HA entities
+        ha_data = ha_entity_map.get(device_name, {"entities": []})
+        device["ha_entities"] = ha_data.get("entities", [])
+        device["ha_domains"] = list(set(e.get("domain", "") for e in device.get("ha_entities", [])))
+    
     state["devices"] = devices
+    state["ha_entities"] = ha_entities
     state["last_update"] = datetime.now().isoformat()
     
     return {
@@ -186,14 +312,52 @@ async def get_device(device_name: str):
     
     for device in devices:
         if device.get("name") == device_name:
+            # Get YAML config
+            yaml_config = await get_yaml_config(device_name)
+            device["yaml_config"] = yaml_config.get("yaml", "")
+            
+            # Get HA entities
+            ha_entities = await get_ha_esphome_entities()
+            ha_entity_map = {e["name"]: e for e in ha_entities}
+            ha_data = ha_entity_map.get(device_name, {"entities": []})
+            device["ha_entities"] = ha_data.get("entities", [])
+            
             return {"success": True, "device": device}
     
-    # If not found in dashboard, try API
-    result = await call_esphome_api(f"/api/device/{device_name}")
-    if "error" not in result:
-        return {"success": True, "device": result}
-    
     raise HTTPException(status_code=404, detail=f"Device {device_name} not found")
+
+
+@app.get("/api/yaml/{device_name}")
+async def get_yaml(device_name: str):
+    """Get YAML configuration for a device"""
+    result = await get_yaml_config(device_name)
+    
+    if result.get("success"):
+        return {"success": True, "yaml": result.get("yaml", ""), "device": device_name}
+    else:
+        raise HTTPException(status_code=404, detail=result.get("error", "Configuration not found"))
+
+
+@app.post("/api/yaml/{device_name}")
+async def save_yaml(device_name: str, yaml_content: str):
+    """Save YAML configuration for a device"""
+    result = await save_yaml_config(device_name, yaml_content)
+    
+    if result.get("success"):
+        return {"success": True, "message": result.get("message", "Configuration saved")}
+    else:
+        raise HTTPException(status_code=400, detail=result.get("error", "Failed to save configuration"))
+
+
+@app.get("/api/ha-entities")
+async def list_ha_entities():
+    """Get ESPHome entities from Home Assistant"""
+    entities = await get_ha_esphome_entities()
+    return {
+        "success": True,
+        "devices": entities,
+        "count": len(entities)
+    }
 
 
 @app.post("/api/compile/{device_name}")
@@ -355,77 +519,7 @@ async def update_device_task(device_name: str):
 
 def get_default_html():
     """Return default HTML page if static files don't exist"""
-    return """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ESPHome Remote Manager</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; }
-        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
-        h1 { color: #333; margin-bottom: 20px; }
-        .card { background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 20px; margin-bottom: 20px; }
-        .device { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #eee; }
-        .device:last-child { border-bottom: none; }
-        .device-name { font-weight: bold; }
-        .device-status { padding: 4px 12px; border-radius: 12px; font-size: 12px; }
-        .status-configured { background: #4caf50; color: white; }
-        .btn { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; margin-left: 8px; }
-        .btn-primary { background: #2196f3; color: white; }
-        .btn-success { background: #4caf50; color: white; }
-        .loading { text-align: center; padding: 40px; color: #666; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>🏠 ESPHome Remote Manager</h1>
-        <div class="card">
-            <h2>Devices</h2>
-            <div id="devices" class="loading">Loading...</div>
-        </div>
-    </div>
-    <script>
-        fetch('/api/devices')
-            .then(r => r.json())
-            .then(data => {
-                const container = document.getElementById('devices');
-                if (data.devices && data.devices.length > 0) {
-                    container.innerHTML = data.devices.map(d => `
-                        <div class="device">
-                            <div>
-                                <div class="device-name">${d.name}</div>
-                                <small style="color:#666">${d.platform || ''} ${d.address || ''}</small>
-                            </div>
-                            <div>
-                                <span class="device-status status-${d.status || 'configured'}">${d.status || 'configured'}</span>
-                                <button class="btn btn-primary" onclick="compile('${d.name}')">Compile</button>
-                                <button class="btn btn-success" onclick="update('${d.name}')">Update</button>
-                            </div>
-                        </div>
-                    `).join('');
-                } else {
-                    container.innerHTML = '<p>No devices found</p>';
-                }
-            });
-        function compile(name) {
-            fetch(`/api/compile/${name}`, {method: 'POST'})
-                .then(r => r.json())
-                .then(d => alert(d.message));
-        }
-        function update(name) {
-            if (confirm(`Update ${name}?`)) {
-                fetch(`/api/update/${name}`, {method: 'POST'})
-                    .then(r => r.json())
-                    .then(d => alert(d.message));
-            }
-        }
-    </script>
-</body>
-</html>
-"""
+    return """<!DOCTYPE html><html><head><title>ESPHome Remote Manager</title></head><body><h1>ESPHome Remote Manager</h1><p>Loading...</p><script>fetch('/api/devices').then(r=>r.json()).then(d=>document.body.innerHTML='<pre>'+JSON.stringify(d,null,2)+'</pre>');</script></body></html>"""
 
 
 if __name__ == "__main__":
