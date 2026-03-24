@@ -1459,15 +1459,6 @@
                 }
             }, 2000);
         }
-                        clearInterval(interval);
-                    } else if (data.status === 'idle') {
-                        clearInterval(interval);
-                    }
-                } catch (e) {
-                    console.error('Status poll error:', e);
-                }
-            }, 2000);
-        }
         
         // Add Log Entry
         function addLog(device, level, message) {
