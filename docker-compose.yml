@@ -1,55 +1,66 @@
 version: '3.8'
 
 services:
-  esphome-remote-manager:
-    image: whitehawk1979/esphome-remote-manager:latest
-    container_name: esphome-remote-manager
-    hostname: esphome-remote-manager
+  # ESPHome Dashboard - Main compilation service
+  esphome:
+    image: esphome/esphome:latest
+    container_name: esphome
     restart: unless-stopped
-    
-    environment:
-      # ESPHome Remote Builder API
-      - ESPHOME_API_URL=${ESPHOME_API_URL:-http://192.168.1.64:7123}
-      - ESPHOME_API_USER=${ESPHOME_API_USER:-esphome}
-      - ESPHOME_API_PASS=${ESPHOME_API_PASS:-esphome}
-      - ESPHOME_DASHBOARD_URL=${ESPHOME_DASHBOARD_URL:-http://192.168.1.64:6052}
-      
-      # MQTT Configuration
-      - MQTT_BROKER=${MQTT_BROKER:-192.168.1.43}
-      - MQTT_PORT=${MQTT_PORT:-1883}
-      - MQTT_USER=${MQTT_USER:-mqtt}
-      - MQTT_PASS=${MQTT_PASS:-}
-      
-      # Device Configuration
-      - DEVICE_NAME=${DEVICE_NAME:-ESPHome Remote Manager}
-      - DEVICE_ID=${DEVICE_ID:-esphome_remote_manager}
-      
-      # Server Configuration
-      - PORT=8000
-      
-      # mDNS Discovery
-      - ENABLE_MDNS=${ENABLE_MDNS:-true}
-    
     ports:
-      - "${PORT:-8080}:8000"
-    
-    # mDNS requires host network or port 5353/udp
-    # Option 1: Use host network (recommended for mDNS)
-    # network_mode: host
-    # Option 2: Expose mDNS port
-    # ports:
-    #   - "5353:5353/udp"
-    
+      - "6052:6052"   # Dashboard Web UI
+      - "7123:6053"   # API port (mapped to internal 6053)
+    volumes:
+      - esphome_config:/config
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      - ESPHOME_DASHBOARD_USE_PING=true
     networks:
-      - homeassistant
-    
+      - esphome_network
     healthcheck:
-      test: ["CMD", "curl", "-s", "http://localhost:8000/api/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:6052"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 5s
+
+  # ESPHome Remote Manager - Web UI for remote management
+  esphome-remote-manager:
+    image: whitehawk1979/esphome-remote-manager:latest
+    container_name: esphome-remote-manager
+    restart: unless-stopped
+    ports:
+      - "8082:8000"
+    environment:
+      # ESPHome API Configuration
+      - ESPHOME_API_URL=http://esphome:6053
+      - ESPHOME_DASHBOARD_URL=http://esphome:6052
+      
+      # MQTT Configuration (for Home Assistant discovery)
+      - MQTT_BROKER=${MQTT_BROKER:-192.168.1.43}
+      - MQTT_PORT=${MQTT_PORT:-1883}
+      - MQTT_USER=${MQTT_USER:-mqtt}
+      - MQTT_PASS=${MQTT_PASS:-2009December16}
+      
+      # Home Assistant Configuration
+      - HA_URL=${HA_URL:-http://192.168.1.43:8123}
+      - HA_MCP_URL=${HA_MCP_URL:-}
+      
+      # MQTT Discovery
+      - ENABLE_MQTT_DISCOVERY=${ENABLE_MQTT_DISCOVERY:-true}
+      - DEVICE_ID=${DEVICE_ID:-esphome_remote_manager}
+    networks:
+      - esphome_network
+    depends_on:
+      - esphome
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  esphome_config:
+    driver: local
 
 networks:
-  homeassistant:
-    external: true
+  esphome_network:
+    driver: bridge

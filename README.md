@@ -1,262 +1,172 @@
 # ESPHome Remote Manager
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2024.1%2B-blue.svg)](https://www.home-assistant.io/)
-[![ESPHome](https://img.shields.io/badge/ESPHome-2026.3.1-orange.svg)](https://esphome.io/)
-[![Docker](https://img.shields.io/badge/Docker-Ready-green.svg)](https://hub.docker.com/)
+**Web-based remote management interface for ESPHome devices with MQTT discovery for Home Assistant.**
 
-Web interface for managing ESPHome devices on a remote server. Similar to ESPHome Update Manager, but designed to work with a remote ESPHome builder server.
+![ESPHome Remote Manager](https://img.shields.io/badge/ESPHome-Remote%20Manager-blue)
+![Docker](https://img.shields.io/badge/Docker-Ready-green)
+![Home Assistant](https://img.shields.io/badge/Home%20Assistant-Integration-orange)
 
-## Features
+## 🚀 Quick Install
 
-- **Web UI**: Modern, responsive web interface for managing ESPHome devices
-- **Remote Management**: Connect to ESPHome Remote Builder API
-- **Device List**: View all ESPHome devices with status and version
-- **Compile & Upload**: Compile and OTA upload firmware to devices
-- **Update Log**: Real-time update progress and logs
-- **Home Assistant Integration**: MQTT discovery for status monitoring
-- **Docker Ready**: Easy deployment with Docker or Docker Compose
+### One-line Installation (Recommended)
 
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                    Docker Container                      │
-│  ┌─────────────────┐  ┌──────────────────────────────┐ │
-│  │    Web UI        │  │        Backend API           │ │
-│  │  (React/Vue)    │  │  (Python FastAPI/Flask)     │ │
-│  │  Port: 8080     │  │  Port: 8000                  │ │
-│  └────────┬────────┘  └──────────┬───────────────────┘ │
-│           │                      │                       │
-│           └──────────┬───────────┘                       │
-│                      │                                   │
-│  ┌───────────────────▼──────────────────────────────┐  │
-│  │              MQTT Discovery Service                │  │
-│  │              (Home Assistant integration)         │ │
-│  └───────────────────────────────────────────────────┘  │
-└──────────────────────────────────────────────────────────┘
-                          │
-                          │ HTTP API
-                          ▼
-┌─────────────────────────────────────────────────────────┐
-│              ESPHome Remote Builder API                 │
-│              (192.168.1.64:7123)                        │
-│              - /api/health                              │
-│              - /api/devices                              │
-│              - /api/compile/{device}                     │
-│              - /api/upload/{device}                     │
-└─────────────────────────────────────────────────────────┘
-                          │
-                          │ OTA
-                          ▼
-┌─────────────────────────────────────────────────────────┐
-│                 ESP Home Eszközök                       │
-│  multisensor, adr1, esp-radar2, esp32-s3-wifi-auto...   │
-└─────────────────────────────────────────────────────────┘
-```
-
-## Requirements
-
-- Docker or Docker Compose
-- ESPHome Remote Builder running on a remote server (LXC or Docker)
-- MQTT broker (e.g., Home Assistant's Mosquitto)
-- Network access to ESPHome devices
-
-## Quick Start
-
-### Docker Compose (Recommended)
-
-1. Clone the repository:
 ```bash
+curl -fsSL https://raw.githubusercontent.com/whitehawk1979/esphome-remote-manager/master/install.sh | sudo bash
+```
+
+### Manual Installation
+
+```bash
+# Clone repository
 git clone https://github.com/whitehawk1979/esphome-remote-manager.git
 cd esphome-remote-manager
-```
 
-2. Create configuration:
-```bash
+# Copy and edit configuration
 cp .env.example .env
-# Edit .env with your settings
-```
+nano .env
 
-3. Run with Docker Compose:
-```bash
+# Start services
 docker-compose up -d
 ```
 
-4. Open your browser:
-```
-http://YOUR_SERVER_IP:8080
-```
+## 📋 Features
 
-### Docker Run
+| Feature | Description |
+|---------|-------------|
+| **ESPHome Dashboard** | Full ESPHome compilation and OTA updates |
+| **Remote Management** | Web UI for managing ESPHome devices |
+| **MQTT Discovery** | Automatic Home Assistant entity discovery |
+| **YAML Editor** | Built-in editor with syntax highlighting |
+| **Device Templates** | Quick-start templates for common sensors |
+| **Status Monitoring** | Real-time device status and health |
 
-```bash
-docker run -d \
-  --name esphome-remote-manager \
-  --restart unless-stopped \
-  -p 8080:8000 \
-  -e ESPHOME_API_URL=http://192.168.1.64:7123 \
-  -e ESPHOME_API_USER=esphome \
-  -e ESPHOME_API_PASS=esphome \
-  -e MQTT_BROKER=192.168.1.43 \
-  -e MQTT_USER=mqtt \
-  -e MQTT_PASS=your_password \
-  whitehawk1979/esphome-remote-manager:latest
-```
+## 🌐 Access Points
 
-### Manual Install
+After installation:
 
-1. Install Python 3.11+ and pip
+| Service | URL |
+|---------|-----|
+| **ESPHome Dashboard** | `http://YOUR_IP:6052` |
+| **Remote Manager** | `http://YOUR_IP:8082` |
 
-2. Install dependencies:
-```bash
-cd backend
-pip install -r requirements.txt
-```
+Default credentials:
+- ESPHome Dashboard: `admin` / `admin`
+- Remote Manager: No authentication (configure reverse proxy for public access)
 
-3. Set environment variables:
-```bash
-export ESPHOME_API_URL=http://192.168.1.64:7123
-export MQTT_BROKER=192.168.1.43
-# ... etc
-```
-
-4. Run:
-```bash
-cd backend
-python -m uvicorn app:app --host 0.0.0.0 --port 8000
-```
-
-## Configuration
+## ⚙️ Configuration
 
 ### Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `ESPHOME_API_URL` | http://192.168.1.64:7123 | ESPHome Remote Builder API URL |
-| `ESPHOME_API_USER` | esphome | API username |
-| `ESPHOME_API_PASS` | esphome | API password |
-| `ESPHOME_DASHBOARD_URL` | http://192.168.1.64:6052 | ESPHome Dashboard URL |
-| `MQTT_BROKER` | 192.168.1.43 | MQTT broker IP |
-| `MQTT_PORT` | 1883 | MQTT broker port |
-| `MQTT_USER` | mqtt | MQTT username |
-| `MQTT_PASS` | (empty) | MQTT password |
-| `DEVICE_NAME` | ESPHome Remote Manager | Display name in Home Assistant |
-| `DEVICE_ID` | esphome_remote_manager | Unique identifier |
-| `PORT` | 8000 | Server port |
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `MQTT_BROKER` | MQTT broker hostname | `192.168.1.43` |
+| `MQTT_PORT` | MQTT broker port | `1883` |
+| `MQTT_USER` | MQTT username | `mqtt` |
+| `MQTT_PASS` | MQTT password | Required |
+| `HA_URL` | Home Assistant URL | `http://192.168.1.43:8123` |
+| `HA_MCP_URL` | Home Assistant MCP endpoint | Optional |
+| `ENABLE_MQTT_DISCOVERY` | Enable MQTT discovery | `true` |
+| `DEVICE_ID` | Device ID for MQTT | `esphome_remote_manager` |
 
-## API Endpoints
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/` | GET | Web UI |
-| `/api/health` | GET | Health check |
-| `/api/devices` | GET | List all devices |
-| `/api/device/{name}` | GET | Get device details |
-| `/api/compile/{name}` | POST | Compile device |
-| `/api/upload/{name}` | POST | Upload to device (OTA) |
-| `/api/update/{name}` | POST | Compile and upload (full update) |
-| `/api/status/{name}` | GET | Get update status |
-| `/api/logs/{name}` | GET | Get device logs |
-
-## Home Assistant Integration
-
-The manager automatically publishes MQTT discovery topics for Home Assistant:
-
-| Entity | Type | Description |
-|--------|------|-------------|
-| `sensor.esphome_remote_manager_status` | sensor | Status (idle/compiling/uploading) |
-| `sensor.esphome_remote_manager_version` | sensor | ESPHome version |
-| `sensor.esphome_remote_manager_device_count` | sensor | Number of devices |
-| `binary_sensor.esphome_remote_manager_connected` | binary_sensor | API connection status |
-
-## Screenshots
-
-### Dashboard
-![Dashboard](docs/dashboard.png)
-
-### Device List
-![Devices](docs/devices.png)
-
-### Update Progress
-![Update](docs/update.png)
-
-## Development
-
-### Project Structure
-
-```
-esphome-remote-manager/
-├── backend/
-│   ├── app.py              # FastAPI application
-│   ├── requirements.txt    # Python dependencies
-│   └── static/
-│       └── index.html      # Web UI
-├── Dockerfile
-├── docker-compose.yml
-├── .env.example
-└── README.md
-```
-
-### Build Docker Image
+### Edit Configuration
 
 ```bash
-docker build -t whitehawk1979/esphome-remote-manager:latest .
+nano /opt/esphome-remote-manager/.env
+systemctl restart esphome-remote-manager
 ```
 
-### Push to Docker Hub
+## 🔧 Management Commands
 
 ```bash
-docker login -u whitehawk1979
-docker push whitehawk1979/esphome-remote-manager:latest
+# View logs
+journalctl -u esphome-remote-manager -f
+
+# Restart services
+systemctl restart esphome-remote-manager
+
+# Stop services
+systemctl stop esphome-remote-manager
+
+# Check status
+systemctl status esphome-remote-manager
 ```
 
-## Troubleshooting
+## 🏠 Home Assistant Integration
 
-### Cannot connect to ESPHome API
+### MQTT Discovery
 
-1. Check ESPHome Remote Builder is running:
+The Remote Manager automatically publishes discovery messages to MQTT:
+
+- **4 default entities**: system_status, devices_count, last_update, connected_devices
+- **Auto-discovery**: Home Assistant automatically creates entities
+- **Topic**: `homeassistant/[domain]/esphome_remote_manager/[entity]/config`
+
+### Enable ESPHome Integration
+
+1. Home Assistant → Settings → Devices & Services
+2. Add Integration → ESPHome
+3. Enter ESPHome Dashboard URL: `http://YOUR_IP:6052`
+4. Configure devices
+
+## 📁 Directory Structure
+
+```
+/opt/esphome-remote-manager/
+├── docker-compose.yml     # Docker Compose configuration
+├── .env                   # Environment variables
+├── .env.example           # Example configuration
+└── install.sh             # Installation script
+```
+
+## 🔒 Security Notes
+
+- **Default credentials**: Change default ESPHome Dashboard password
+- **Reverse proxy**: Use nginx/Traefik for public access with HTTPS
+- **Firewall**: Restrict port access (6052, 8082) to trusted IPs
+- **MQTT credentials**: Use strong MQTT password
+
+## 🐛 Troubleshooting
+
+### Container won't start
+
 ```bash
-curl -u esphome:esphome http://192.168.1.64:7123/api/health
+# Check logs
+docker logs esphome
+docker logs esphome-remote-manager
+
+# Restart containers
+docker-compose restart
 ```
 
-2. Check network connectivity:
-```bash
-ping 192.168.1.64
-```
+### ESPHome devices not found
 
-### Devices not showing
-
-1. Check ESPHome Dashboard:
-```bash
-curl -u admin:admin http://192.168.1.64:6052/devices
-```
-
-2. Verify ESPHome devices are configured
+1. Ensure devices are on the same network
+2. Check ESPHome Dashboard is accessible at `http://YOUR_IP:6052`
+3. Verify devices are configured with `api:` component
 
 ### MQTT discovery not working
 
-1. Check MQTT broker connection:
-```bash
-mosquitto_sub -h 192.168.1.43 -p 1883 -u mqtt -P 'password' -t 'homeassistant/#' -C 5
-```
+1. Verify MQTT broker is accessible
+2. Check MQTT credentials in `.env`
+3. Ensure Home Assistant MQTT integration is active
 
-2. Verify Home Assistant MQTT integration is configured
+## 📝 License
 
-## License
+MIT License - See [LICENSE](LICENSE) for details.
 
-MIT License - see [LICENSE](LICENSE) for details.
+## 🤝 Contributing
 
-## Contributing
+1. Fork the repository
+2. Create feature branch: `git checkout -b feature/my-feature`
+3. Commit changes: `git commit -am 'Add my feature'`
+4. Push to branch: `git push origin feature/my-feature`
+5. Submit Pull Request
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+## 📧 Support
 
-## Author
+- **Issues**: [GitHub Issues](https://github.com/whitehawk1979/esphome-remote-manager/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/whitehawk1979/esphome-remote-manager/discussions)
 
-Created by Morzsa (OpenClaw Assistant) for the ESPHome Home Assistant integration project.
+---
 
-## Related Projects
-
-- [ESPHome Remote Builder MQTT Discovery](https://github.com/whitehawk1979/esphome-remote-builder-mqtt-discovery)
-- [ESPHome](https://esphome.io/)
-- [Home Assistant](https://www.home-assistant.io/)
+**Made with 🍞 by Morzsa**
