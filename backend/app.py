@@ -289,6 +289,103 @@ async def list_devices():
     }
 
 
+@app.get("/api/yaml/{device_name}")
+async def get_yaml(device_name: str):
+    """Get YAML configuration for a device"""
+    try:
+        # Get YAML from ESPHome Dashboard edit endpoint
+        auth = aiohttp.BasicAuth(ESPHOME_DASHBOARD_USER, ESPHOME_DASHBOARD_PASS)
+        async with aiohttp.ClientSession(auth=auth) as session:
+            url = f"{ESPHOME_DASHBOARD_URL}/edit?configuration={device_name}.yaml"
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=30)) as response:
+                if response.status == 200:
+                    yaml_content = await response.text()
+                    state["yaml_configs"][device_name] = yaml_content
+                    return {
+                        "success": True,
+                        "device": device_name,
+                        "yaml": yaml_content,
+                        "length": len(yaml_content)
+                    }
+                else:
+                    return {"success": False, "error": f"HTTP {response.status}", "device": device_name}
+    except Exception as e:
+        logger.error(f"Failed to get YAML for {device_name}: {e}")
+        return {"success": False, "error": str(e), "device": device_name}
+
+
+@app.post("/api/yaml/{device_name}")
+async def save_yaml(device_name: str, yaml_data: dict):
+    """Save YAML configuration for a device"""
+    yaml_content = yaml_data.get("yaml", "")
+    if not yaml_content:
+        raise HTTPException(status_code=400, detail="YAML content required")
+    
+    try:
+        # Save to ESPHome Dashboard edit endpoint
+        auth = aiohttp.BasicAuth(ESPHOME_DASHBOARD_USER, ESPHOME_DASHBOARD_PASS)
+        async with aiohttp.ClientSession(auth=auth) as session:
+            url = f"{ESPHOME_DASHBOARD_URL}/edit?configuration={device_name}.yaml"
+            async with session.post(url, data=yaml_content, timeout=aiohttp.ClientTimeout(total=30)) as response:
+                if response.status == 200:
+                    state["yaml_configs"][device_name] = yaml_content
+                    return {"success": True, "device": device_name, "message": "YAML saved successfully"}
+                else:
+                    text = await response.text()
+                    return {"success": False, "error": f"HTTP {response.status}: {text}", "device": device_name}
+    except Exception as e:
+        logger.error(f"Failed to save YAML for {device_name}: {e}")
+        return {"success": False, "error": str(e), "device": device_name}
+
+
+@app.post("/api/compile/{device_name}")
+async def compile_device(device_name: str):
+    """Compile device configuration"""
+    try:
+        result = await call_esphome_api(f"/api/compile/{device_name}", method="POST")
+        return {
+            "success": "error" not in result,
+            "device": device_name,
+            "result": result
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e), "device": device_name}
+
+
+@app.post("/api/upload/{device_name}")
+async def upload_device(device_name: str):
+    """Upload/OTA device"""
+    try:
+        result = await call_esphome_api(f"/api/upload/{device_name}", method="POST")
+        return {
+            "success": "error" not in result,
+            "device": device_name,
+            "result": result
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e), "device": device_name}
+
+
+@app.get("/api/status/{device_name}")
+async def get_status(device_name: str):
+    """Get device status"""
+    try:
+        result = await call_esphome_api(f"/api/status/{device_name}")
+        return result
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.get("/api/logs/{device_name}")
+async def get_logs(device_name: str):
+    """Get device logs"""
+    try:
+        result = await call_esphome_api(f"/api/logs/{device_name}")
+        return result
+    except Exception as e:
+        return {"error": str(e)}
+
+
 def get_default_html():
     """Return default HTML page"""
     return """<!DOCTYPE html><html><head><title>ESPHome Remote Manager</title></head><body><h1>ESPHome Remote Manager</h1><p>Loading...</p><script>fetch('/api/devices').then(r=>r.json()).then(d=>document.body.innerHTML='<pre>'+JSON.stringify(d,null,2)+'</pre>');</script></body></html>"""
