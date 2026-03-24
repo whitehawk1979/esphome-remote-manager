@@ -15,15 +15,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 # Copy requirements and install
-COPY requirements.txt .
+COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application
-COPY app/ ./app/
-WORKDIR /app/app
-
-# Create static directory
-RUN mkdir -p static
+COPY backend/app/ ./app/
 
 # Environment variables
 ENV ESPHOME_API_URL="http://192.168.1.64:7123"
