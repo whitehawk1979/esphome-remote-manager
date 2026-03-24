@@ -415,6 +415,8 @@
         }
         
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes slideOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
         
         /* Settings */
         .settings-section {
@@ -924,6 +926,7 @@
     </div>
     
     <script>
+        // Version: 1774376468
         const API_BASE = window.location.origin;
         let devices = [];
         let currentYaml = '';
@@ -1797,32 +1800,98 @@ modbus_controller:
         });
         
         async function testMQTTConnection() {
-            updateMQTTStatus('warning', 'Testing...');
+            // Show loading state
+            const btn = event.target.closest('button');
+            const originalContent = btn.innerHTML;
+            btn.innerHTML = '<span class="material-icons" style="animation: spin 1s linear infinite;">sync</span> Testing...';
+            btn.disabled = true;
+            
+            updateMQTTStatus('warning', 'Testing MQTT connection...');
+            
             try {
                 // Test MQTT by fetching health (which uses MQTT)
                 const response = await fetch(`${API_BASE}/api/health`);
                 const data = await response.json();
                 
                 if (data.status === 'healthy') {
-                    updateMQTTStatus('success', 'MQTT Connected');
+                    updateMQTTStatus('success', 'MQTT Connected ✓');
+                    showToast('success', 'MQTT Connection', 'Successfully connected to MQTT broker!');
                 } else {
                     updateMQTTStatus('error', 'MQTT Error');
+                    showToast('error', 'MQTT Connection', 'MQTT broker returned an error');
                 }
             } catch (error) {
                 updateMQTTStatus('error', 'Connection Failed');
+                showToast('error', 'MQTT Connection', 'Failed to connect: ' + error.message);
+            } finally {
+                // Restore button
+                btn.innerHTML = originalContent;
+                btn.disabled = false;
             }
         }
         
         async function republishDiscovery() {
+            // Show loading state
+            const btn = event.target.closest('button');
+            const originalContent = btn.innerHTML;
+            btn.innerHTML = '<span class="material-icons" style="animation: spin 1s linear infinite;">sync</span> Publishing...';
+            btn.disabled = true;
+            
             try {
                 // Call a discovery endpoint to republish
                 const response = await fetch(`${API_BASE}/api/health`);
                 await response.json();
                 
-                alert('MQTT Discovery republished! Check Home Assistant for new entities.');
+                showToast('success', 'MQTT Discovery', 'Discovery topics republished! Check Home Assistant for new entities.');
             } catch (error) {
-                alert('Failed to republish discovery: ' + error.message);
+                showToast('error', 'MQTT Discovery', 'Failed to republish: ' + error.message);
+            } finally {
+                // Restore button
+                btn.innerHTML = originalContent;
+                btn.disabled = false;
             }
+        }
+        
+        // Toast notification system
+        function showToast(type, title, message) {
+            // Remove existing toasts
+            const existingToasts = document.querySelectorAll('.toast-notification');
+            existingToasts.forEach(t => t.remove());
+            
+            // Create toast
+            const toast = document.createElement('div');
+            toast.className = 'toast-notification';
+            toast.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: ${type === 'success' ? 'var(--success)' : type === 'error' ? 'var(--error)' : 'var(--primary)'};
+                color: white;
+                padding: 16px 24px;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                z-index: 10000;
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                animation: slideIn 0.3s ease;
+            `;
+            
+            toast.innerHTML = `
+                <span class="material-icons">${type === 'success' ? 'check_circle' : type === 'error' ? 'error' : 'info'}</span>
+                <div>
+                    <div style="font-weight: 500;">${title}</div>
+                    <div style="font-size: 13px; opacity: 0.9;">${message}</div>
+                </div>
+            `;
+            
+            document.body.appendChild(toast);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                toast.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
         }
         
         async function saveSettings() {
