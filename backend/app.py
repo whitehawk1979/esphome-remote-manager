@@ -12,10 +12,9 @@ from datetime import datetime
 from typing import Optional, List, Dict, Any
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import subprocess
 import logging
 
 # Configuration
@@ -23,6 +22,8 @@ ESPHOME_API_URL = os.getenv("ESPHOME_API_URL", "http://192.168.1.64:7123")
 ESPHOME_API_USER = os.getenv("ESPHOME_API_USER", "esphome")
 ESPHOME_API_PASS = os.getenv("ESPHOME_API_PASS", "esphome")
 ESPHOME_DASHBOARD_URL = os.getenv("ESPHOME_DASHBOARD_URL", "http://192.168.1.64:6052")
+ESPHOME_DASHBOARD_USER = os.getenv("ESPHOME_DASHBOARD_USER", "admin")
+ESPHOME_DASHBOARD_PASS = os.getenv("ESPHOME_DASHBOARD_PASS", "admin")
 
 # MQTT Configuration
 MQTT_BROKER = os.getenv("MQTT_BROKER", "192.168.1.43")
@@ -54,39 +55,19 @@ app.add_middleware(
 
 # Static files
 static_dir = os.path.join(os.path.dirname(__file__), "static")
-os.makedirs(static_dir, exist_ok=True)
+if os.path.exists(static_dir):
+    app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 # In-memory state
 state = {
     "devices": [],
     "last_update": None,
-    "update_status": "idle",
-    "update_log": [],
-    "current_device": None
+    "esphome_version": None,
+    "update_status": "idle"
 }
 
 # Background task status
 update_tasks: Dict[str, Dict[str, Any]] = {}
-
-
-class Device(BaseModel):
-    name: str
-    ip: Optional[str] = None
-    port: int = 6053
-    status: str = "unknown"
-    version: Optional[str] = None
-    last_update: Optional[str] = None
-
-
-class UpdateRequest(BaseModel):
-    device: str
-    action: str = "compile"  # compile, upload, full
-
-
-class ApiResponse(BaseModel):
-    success: bool
-    message: str
-    data: Optional[Dict[str, Any]] = None
 
 
 async def call_esphome_api(endpoint: str, method: str = "GET", data: Optional[dict] = None) -> Dict[str, Any]:
@@ -101,13 +82,15 @@ async def call_esphome_api(endpoint: str, method: str = "GET", data: Optional[di
                     if response.status == 200:
                         return await response.json()
                     else:
-                        return {"error": f"HTTP {response.status}"}
+                        text = await response.text()
+                        return {"error": f"HTTP {response.status}: {text}"}
             elif method == "POST":
                 async with session.post(url, json=data, timeout=aiohttp.ClientTimeout(total=300)) as response:
                     if response.status == 200:
                         return await response.json()
                     else:
-                        return {"error": f"HTTP {response.status}"}
+                        text = await response.text()
+                        return {"error": f"HTTP {response.status}: {text}"}
         except asyncio.TimeoutError:
             return {"error": "Timeout"}
         except Exception as e:
@@ -115,25 +98,36 @@ async def call_esphome_api(endpoint: str, method: str = "GET", data: Optional[di
             return {"error": str(e)}
 
 
-async def get_devices_from_esphome() -> List[Dict[str, Any]]:
-    """Get list of ESPHome devices from remote server"""
+async def get_devices_from_dashboard() -> List[Dict[str, Any]]:
+    """Get list of ESPHome devices from ESPHome Dashboard"""
     try:
-        # Try to get devices from ESPHome Dashboard API
-        async with aiohttp.ClientSession() as session:
-            auth = aiohttp.BasicAuth("admin", "admin")
-            async with session.get(f"{ESPHOME_DASHBOARD_URL}/devices", auth=auth, timeout=aiohttp.ClientTimeout(total=10)) as response:
+        auth = aiohttp.BasicAuth(ESPHOME_DASHBOARD_USER, ESPHOME_DASHBOARD_PASS)
+        async with aiohttp.ClientSession(auth=auth) as session:
+            async with session.get(f"{ESPHOME_DASHBOARD_URL}/devices", timeout=aiohttp.ClientTimeout(total=10)) as response:
                 if response.status == 200:
                     data = await response.json()
-                    return data if isinstance(data, list) else []
+                    devices = []
+                    
+                    # Parse configured devices
+                    for device in data.get("configured", []):
+                        devices.append({
+                            "name": device.get("name", "unknown"),
+                            "configuration": device.get("configuration", ""),
+                            "platform": device.get("target_platform", "unknown"),
+                            "deployed_version": device.get("deployed_version", "unknown"),
+                            "current_version": device.get("current_version", "unknown"),
+                            "address": device.get("address", ""),
+                            "web_port": device.get("web_port", 80),
+                            "status": "configured"
+                        })
+                    
+                    return devices
+                else:
+                    logger.error(f"Dashboard API returned {response.status}")
+                    return []
     except Exception as e:
-        logger.warning(f"Could not get devices from dashboard: {e}")
-    
-    # Fallback: try to get from API
-    result = await call_esphome_api("/api/devices")
-    if "error" not in result:
-        return result.get("devices", [])
-    
-    return []
+        logger.error(f"Failed to get devices from dashboard: {e}")
+        return []
 
 
 @app.get("/")
@@ -141,7 +135,7 @@ async def root():
     """Serve the main HTML page"""
     html_path = os.path.join(static_dir, "index.html")
     if os.path.exists(html_path):
-        return HTMLResponse(content=open(html_path).read())
+        return FileResponse(html_path)
     return HTMLResponse(content=get_default_html())
 
 
@@ -149,9 +143,20 @@ async def root():
 async def health():
     """Health check endpoint"""
     result = await call_esphome_api("/api/health")
+    
+    # Extract version from result
+    esphome_version = "unknown"
+    if "esphome_version" in result:
+        esphome_version = result["esphome_version"]
+        # Clean up version string
+        if esphome_version.startswith("Version: "):
+            esphome_version = esphome_version.replace("Version: ", "")
+    
+    state["esphome_version"] = esphome_version
+    
     return {
-        "status": "healthy",
-        "esphome_version": result.get("esphome_version", "unknown"),
+        "status": "healthy" if "error" not in result else "error",
+        "esphome_version": esphome_version,
         "agent_version": result.get("agent_version", "unknown"),
         "container_running": result.get("container_running", False),
         "timestamp": datetime.now().isoformat()
@@ -161,31 +166,47 @@ async def health():
 @app.get("/api/devices")
 async def list_devices():
     """List all ESPHome devices"""
-    devices = await get_devices_from_esphome()
+    devices = await get_devices_from_dashboard()
     state["devices"] = devices
-    return {"success": True, "devices": devices}
+    state["last_update"] = datetime.now().isoformat()
+    
+    return {
+        "success": True,
+        "devices": devices,
+        "count": len(devices),
+        "esphome_version": state.get("esphome_version", "unknown"),
+        "last_update": state.get("last_update")
+    }
 
 
 @app.get("/api/device/{device_name}")
 async def get_device(device_name: str):
     """Get details for a specific device"""
+    devices = await get_devices_from_dashboard()
+    
+    for device in devices:
+        if device.get("name") == device_name:
+            return {"success": True, "device": device}
+    
+    # If not found in dashboard, try API
     result = await call_esphome_api(f"/api/device/{device_name}")
-    if "error" in result:
-        raise HTTPException(status_code=404, detail=f"Device {device_name} not found")
-    return {"success": True, "device": result}
+    if "error" not in result:
+        return {"success": True, "device": result}
+    
+    raise HTTPException(status_code=404, detail=f"Device {device_name} not found")
 
 
 @app.post("/api/compile/{device_name}")
 async def compile_device(device_name: str, background_tasks: BackgroundTasks):
     """Compile a device"""
-    if device_name in update_tasks and update_tasks[device_name].get("status") == "running":
+    if device_name in update_tasks and update_tasks[device_name].get("status") in ["compiling", "uploading"]:
         return {"success": False, "message": f"Device {device_name} is already being processed"}
     
     # Start background compilation
     update_tasks[device_name] = {
         "status": "compiling",
         "started": datetime.now().isoformat(),
-        "log": [],
+        "log": [{"time": datetime.now().isoformat(), "level": "info", "message": f"Starting compilation for {device_name}"}],
         "device": device_name
     }
     
@@ -197,14 +218,14 @@ async def compile_device(device_name: str, background_tasks: BackgroundTasks):
 @app.post("/api/upload/{device_name}")
 async def upload_device(device_name: str, background_tasks: BackgroundTasks):
     """Upload (OTA update) a device"""
-    if device_name in update_tasks and update_tasks[device_name].get("status") == "running":
+    if device_name in update_tasks and update_tasks[device_name].get("status") in ["compiling", "uploading"]:
         return {"success": False, "message": f"Device {device_name} is already being processed"}
     
     # Start background upload
     update_tasks[device_name] = {
         "status": "uploading",
         "started": datetime.now().isoformat(),
-        "log": [],
+        "log": [{"time": datetime.now().isoformat(), "level": "info", "message": f"Starting upload for {device_name}"}],
         "device": device_name
     }
     
@@ -216,14 +237,14 @@ async def upload_device(device_name: str, background_tasks: BackgroundTasks):
 @app.post("/api/update/{device_name}")
 async def update_device(device_name: str, background_tasks: BackgroundTasks):
     """Compile and upload a device (full update)"""
-    if device_name in update_tasks and update_tasks[device_name].get("status") == "running":
+    if device_name in update_tasks and update_tasks[device_name].get("status") in ["compiling", "uploading"]:
         return {"success": False, "message": f"Device {device_name} is already being processed"}
     
     # Start background update
     update_tasks[device_name] = {
         "status": "compiling",
         "started": datetime.now().isoformat(),
-        "log": [],
+        "log": [{"time": datetime.now().isoformat(), "level": "info", "message": f"Starting full update for {device_name}"}],
         "device": device_name
     }
     
@@ -264,18 +285,20 @@ async def compile_device_task(device_name: str):
     """Background task to compile a device"""
     try:
         result = await call_esphome_api(f"/api/compile/{device_name}", method="POST")
-        update_tasks[device_name]["status"] = "compiled"
-        update_tasks[device_name]["log"].append({
-            "time": datetime.now().isoformat(),
-            "level": "info",
-            "message": f"Compilation completed for {device_name}"
-        })
+        
         if "error" in result:
             update_tasks[device_name]["status"] = "error"
             update_tasks[device_name]["log"].append({
                 "time": datetime.now().isoformat(),
                 "level": "error",
                 "message": f"Compilation failed: {result['error']}"
+            })
+        else:
+            update_tasks[device_name]["status"] = "compiled"
+            update_tasks[device_name]["log"].append({
+                "time": datetime.now().isoformat(),
+                "level": "success",
+                "message": f"Compilation completed for {device_name}"
             })
     except Exception as e:
         update_tasks[device_name]["status"] = "error"
@@ -290,18 +313,20 @@ async def upload_device_task(device_name: str):
     """Background task to upload a device"""
     try:
         result = await call_esphome_api(f"/api/upload/{device_name}", method="POST")
-        update_tasks[device_name]["status"] = "uploaded"
-        update_tasks[device_name]["log"].append({
-            "time": datetime.now().isoformat(),
-            "level": "info",
-            "message": f"Upload completed for {device_name}"
-        })
+        
         if "error" in result:
             update_tasks[device_name]["status"] = "error"
             update_tasks[device_name]["log"].append({
                 "time": datetime.now().isoformat(),
                 "level": "error",
                 "message": f"Upload failed: {result['error']}"
+            })
+        else:
+            update_tasks[device_name]["status"] = "uploaded"
+            update_tasks[device_name]["log"].append({
+                "time": datetime.now().isoformat(),
+                "level": "success",
+                "message": f"Upload completed for {device_name}"
             })
     except Exception as e:
         update_tasks[device_name]["status"] = "error"
@@ -347,112 +372,56 @@ def get_default_html():
         .device:last-child { border-bottom: none; }
         .device-name { font-weight: bold; }
         .device-status { padding: 4px 12px; border-radius: 12px; font-size: 12px; }
-        .status-online { background: #4caf50; color: white; }
-        .status-offline { background: #f44336; color: white; }
-        .status-unknown { background: #9e9e9e; color: white; }
+        .status-configured { background: #4caf50; color: white; }
         .btn { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; margin-left: 8px; }
         .btn-primary { background: #2196f3; color: white; }
         .btn-success { background: #4caf50; color: white; }
-        .btn-danger { background: #f44336; color: white; }
-        .btn:hover { opacity: 0.9; }
-        .header { display: flex; justify-content: space-between; align-items: center; }
-        .status-badge { padding: 8px 16px; border-radius: 8px; background: #4caf50; color: white; }
         .loading { text-align: center; padding: 40px; color: #666; }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>🏠 ESPHome Remote Manager</h1>
-            <div class="status-badge" id="status-badge">Loading...</div>
-        </div>
-        
+        <h1>🏠 ESPHome Remote Manager</h1>
         <div class="card">
             <h2>Devices</h2>
-            <div id="devices" class="loading">Loading devices...</div>
-        </div>
-        
-        <div class="card">
-            <h2>System Status</h2>
-            <div id="system-status">Loading...</div>
+            <div id="devices" class="loading">Loading...</div>
         </div>
     </div>
-    
     <script>
-        let devices = [];
-        
-        async function fetchHealth() {
-            try {
-                const response = await fetch('/api/health');
-                const data = await response.json();
-                document.getElementById('status-badge').textContent = 
-                    `ESPHome ${data.esphome_version} | Agent ${data.agent_version}`;
-            } catch (e) {
-                document.getElementById('status-badge').textContent = 'Error';
+        fetch('/api/devices')
+            .then(r => r.json())
+            .then(data => {
+                const container = document.getElementById('devices');
+                if (data.devices && data.devices.length > 0) {
+                    container.innerHTML = data.devices.map(d => `
+                        <div class="device">
+                            <div>
+                                <div class="device-name">${d.name}</div>
+                                <small style="color:#666">${d.platform || ''} ${d.address || ''}</small>
+                            </div>
+                            <div>
+                                <span class="device-status status-${d.status || 'configured'}">${d.status || 'configured'}</span>
+                                <button class="btn btn-primary" onclick="compile('${d.name}')">Compile</button>
+                                <button class="btn btn-success" onclick="update('${d.name}')">Update</button>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = '<p>No devices found</p>';
+                }
+            });
+        function compile(name) {
+            fetch(`/api/compile/${name}`, {method: 'POST'})
+                .then(r => r.json())
+                .then(d => alert(d.message));
+        }
+        function update(name) {
+            if (confirm(`Update ${name}?`)) {
+                fetch(`/api/update/${name}`, {method: 'POST'})
+                    .then(r => r.json())
+                    .then(d => alert(d.message));
             }
         }
-        
-        async function fetchDevices() {
-            try {
-                const response = await fetch('/api/devices');
-                const data = await response.json();
-                devices = data.devices || [];
-                renderDevices();
-            } catch (e) {
-                document.getElementById('devices').innerHTML = '<p>Error loading devices</p>';
-            }
-        }
-        
-        function renderDevices() {
-            const container = document.getElementById('devices');
-            if (devices.length === 0) {
-                container.innerHTML = '<p>No devices found</p>';
-                return;
-            }
-            
-            container.innerHTML = devices.map(device => `
-                <div class="device">
-                    <div>
-                        <div class="device-name">${device.name || 'Unknown'}</div>
-                        <small style="color: #666;">${device.ip || 'No IP'}</small>
-                    </div>
-                    <div>
-                        <span class="device-status status-${device.status || 'unknown'}">${device.status || 'unknown'}</span>
-                        <button class="btn btn-primary" onclick="compileDevice('${device.name}')">Compile</button>
-                        <button class="btn btn-success" onclick="updateDevice('${device.name}')">Update</button>
-                    </div>
-                </div>
-            `).join('');
-        }
-        
-        async function compileDevice(name) {
-            try {
-                const response = await fetch(`/api/compile/${name}`, { method: 'POST' });
-                const data = await response.json();
-                alert(data.message);
-            } catch (e) {
-                alert('Error: ' + e.message);
-            }
-        }
-        
-        async function updateDevice(name) {
-            if (!confirm(`Update ${name}? This will compile and upload the firmware.`)) return;
-            try {
-                const response = await fetch(`/api/update/${name}`, { method: 'POST' });
-                const data = await response.json();
-                alert(data.message);
-            } catch (e) {
-                alert('Error: ' + e.message);
-            }
-        }
-        
-        // Initial load
-        fetchHealth();
-        fetchDevices();
-        
-        // Refresh every 30 seconds
-        setInterval(fetchHealth, 30000);
-        setInterval(fetchDevices, 30000);
     </script>
 </body>
 </html>
