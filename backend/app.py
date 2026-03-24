@@ -194,7 +194,17 @@ async def health():
         "esphome_version": esphome_version,
         "agent_version": result.get("agent_version", "unknown"),
         "container_running": result.get("container_running", False),
-        "timestamp": datetime.now().isoformat()
+        "timestamp": datetime.now().isoformat(),
+        # Configuration info
+        "esphome_api_url": ESPHOME_API_URL,
+        "esphome_dashboard_url": ESPHOME_DASHBOARD_URL,
+        "mqtt_broker": MQTT_BROKER,
+        "mqtt_port": MQTT_PORT,
+        "mqtt_user": MQTT_USER,
+        "ha_url": HA_URL,
+        "ha_mcp_url": HA_MCP_URL,
+        "device_id": DEVICE_ID,
+        "mqtt_discovery_enabled": ENABLE_MQTT_DISCOVERY
     }
 
 
