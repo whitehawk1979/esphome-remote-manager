@@ -1187,39 +1187,39 @@
                 
                 if (deviceData.success && deviceData.device) {
                     const device = deviceData.device;
-                    const entitiesContainer = document.getElementById('yaml-entities');
                     
-                    // Display defined entities from YAML integrations
+                    // Update device info
+                    const deviceInfoHtml = `
+                        <div style="margin-bottom: 8px;"><strong>Platform:</strong> ${device.platform || 'Unknown'}</div>
+                        <div style="margin-bottom: 8px;"><strong>Address:</strong> ${device.address || 'Unknown'}</div>
+                        <div style="margin-bottom: 8px;"><strong>Version:</strong> ${device.deployed_version || 'Unknown'}</div>
+                        <div><strong>Status:</strong> ${device.status || 'Unknown'}</div>
+                    `;
+                    document.getElementById('yaml-device-info').innerHTML = deviceInfoHtml;
+                    
+                    // Update integrations
                     const integrations = device.integrations || [];
-                    const haEntities = device.ha_entities || [];
-                    
-                    let entitiesHtml = '';
-                    
-                    // Show integrations defined in YAML
-                    entitiesHtml += `<div style="margin-bottom: 16px;">
-                        <h4 style="margin-bottom: 8px; color: var(--primary);">Defined Integrations</h4>
-                        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                            ${integrations.map(i => `<span style="padding: 4px 12px; background: var(--bg); border-radius: 16px; font-size: 12px; font-family: 'Roboto Mono', monospace;">${i}</span>`).join('')}
+                    const integrationsHtml = `
+                        <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                            ${integrations.map(i => `<span style="padding: 4px 10px; background: var(--primary); color: white; border-radius: 12px; font-size: 11px; font-weight: 500;">${i}</span>`).join('')}
                         </div>
-                    </div>`;
+                    `;
+                    document.getElementById('yaml-integrations').innerHTML = integrationsHtml || '<div style="color: var(--text-secondary);">No integrations found</div>';
                     
-                    // Show HA entities
-                    if (haEntities.length > 0) {
-                        entitiesHtml += `<div style="margin-bottom: 16px;">
-                            <h4 style="margin-bottom: 8px; color: var(--primary);">Home Assistant Entities (${haEntities.length})</h4>
-                            <div class="entities-grid">
-                                ${haEntities.map(e => `
-                                    <div class="entity-card" style="padding: 12px; background: var(--bg); border-radius: 8px;">
-                                        <div style="font-size: 11px; color: var(--primary); text-transform: uppercase; margin-bottom: 4px;">${e.domain}</div>
-                                        <div style="font-size: 14px; font-weight: 500; margin-bottom: 4px;">${e.friendly_name || e.entity_id}</div>
-                                        <div style="font-size: 12px; color: ${e.state === 'on' || e.state === 'home' ? 'var(--success)' : e.state === 'off' || e.state === 'away' ? 'var(--secondary)' : 'var(--text-secondary)'};">${e.state}</div>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>`;
-                    } else {
-                        entitiesHtml += `<div style="color: var(--text-secondary); font-style: italic;">No HA entities found for this device</div>`;
-                    }
+                    // HA entities - note about needing to enable API
+                    const haEntitiesHtml = `
+                        <div style="color: var(--text-secondary); font-size: 13px; line-height: 1.6;">
+                            <p style="margin-bottom: 8px;">Home Assistant entities are automatically discovered when:</p>
+                            <ul style="margin-left: 20px; margin-bottom: 12px;">
+                                <li>Device has <code style="background: var(--code-bg); padding: 2px 6px; border-radius: 4px;">api:</code> component enabled</li>
+                                <li>Device is connected to Home Assistant via ESPHome integration</li>
+                            </ul>
+                            <p style="margin-bottom: 8px;"><strong>Current integrations:</strong> ${integrations.length}</p>
+                            <p style="font-style: italic;">Entities will appear here once the device is integrated with Home Assistant.</p>
+                        </div>
+                    `;
+                    document.getElementById('yaml-entities').innerHTML = haEntitiesHtml;
+                }
                     
                     // Parse YAML for defined components
                     const yamlText = yamlData.yaml || '';
