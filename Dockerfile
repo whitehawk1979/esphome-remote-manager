@@ -18,8 +18,9 @@ WORKDIR /app
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application
-COPY backend/app/ ./
+# Copy application files
+COPY backend/app.py ./app.py
+COPY backend/app/static ./static
 
 # Environment variables
 ENV ESPHOME_API_URL="http://192.168.1.64:7123"
