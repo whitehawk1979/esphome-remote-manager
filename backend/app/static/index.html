@@ -823,20 +823,24 @@
         <div class="tab-content" id="logs-tab">
             <div class="card">
                 <div class="card-header">
-                    <h2><span class="material-icons">history</span> Update Logs</h2>
+                    <h2><span class="material-icons">history</span> Logs</h2>
                     <div>
-                        <select id="logs-device-select" class="btn btn-outline">
-                            <option value="">Select device...</option>
+                        <select id="logs-device-select" class="btn btn-outline" onchange="loadDeviceLogs()">
+                            <option value="">System Logs</option>
                         </select>
                         <button class="btn btn-outline" onclick="clearLogs()">
                             <span class="material-icons">delete</span>
                             Clear
                         </button>
+                        <button class="btn btn-primary" onclick="refreshLogs()">
+                            <span class="material-icons">refresh</span>
+                            Refresh
+                        </button>
                     </div>
                 </div>
                 <div class="card-body">
-                    <div class="log-view" id="log-view">
-                        <div class="log-line">Select a device to view logs...</div>
+                    <div class="log-view" id="log-view" style="background: var(--code-bg); color: #d4d4d4; padding: 16px; border-radius: 8px; font-family: 'Roboto Mono', monospace; font-size: 12px; max-height: 600px; overflow-y: auto;">
+                        <div class="log-line"><span class="log-time">[${new Date().toLocaleTimeString()}]</span> Connecting to WebSocket...</div>
                     </div>
                 </div>
             </div>
@@ -1704,9 +1708,88 @@ Device-specific instructions:
             const time = new Date().toLocaleTimeString();
             const logLine = document.createElement('div');
             logLine.className = 'log-line';
-            logLine.innerHTML = `<span class="log-time">${time}</span> <span class="log-${level}">[system]</span> ${message}`;
+            logLine.innerHTML = `<span class="log-time">[${time}]</span> <span class="log-${level}">[${level.toUpperCase()}]</span> ${message}`;
             logView.appendChild(logLine);
             logView.scrollTop = logView.scrollHeight;
+        }
+        
+        // Log Viewer Functions
+        let currentLogs = [];
+        let logPollInterval = null;
+        
+        async function loadDeviceLogs() {
+            const deviceName = document.getElementById('logs-device-select').value;
+            const logView = document.getElementById('log-view');
+            
+            if (!deviceName) {
+                // Show system logs
+                logView.innerHTML = '<div class="log-line"><span class="log-time">[' + new Date().toLocaleTimeString() + ']</span> Showing system logs...</div>';
+                loadSystemLogs();
+                return;
+            }
+            
+            logView.innerHTML = `<div class="log-line"><span class="log-time">[${new Date().toLocaleTimeString()}]</span> Loading logs for ${deviceName}...</div>`;
+            
+            try {
+                // Get device logs from ESPHome
+                const response = await fetch(`${API_BASE}/api/logs/${deviceName}`);
+                const data = await response.json();
+                
+                if (data.success && data.logs) {
+                    logView.innerHTML = '';
+                    data.logs.forEach(log => {
+                        addLogLine(log.time, log.level, log.message);
+                    });
+                } else {
+                    logView.innerHTML = `<div class="log-line"><span class="log-time">[${new Date().toLocaleTimeString()}]</span> No logs available for ${deviceName}</div>`;
+                }
+            } catch (e) {
+                logView.innerHTML = `<div class="log-line log-error"><span class="log-time">[${new Date().toLocaleTimeString()}]</span> Error loading logs: ${e.message}</div>`;
+            }
+        }
+        
+        function loadSystemLogs() {
+            const logView = document.getElementById('log-view');
+            logView.innerHTML = '';
+            
+            // Show recent task logs
+            currentLogs.forEach(log => {
+                addLogLine(log.time, log.level, log.message);
+            });
+            
+            if (currentLogs.length === 0) {
+                addLogLine(new Date().toLocaleTimeString(), 'info', 'No system logs yet. Start a compile or update to see logs here.');
+            }
+        }
+        
+        function addLogLine(time, level, message) {
+            const logView = document.getElementById('log-view');
+            const logLine = document.createElement('div');
+            logLine.className = 'log-line';
+            logLine.innerHTML = `<span class="log-time">[${time}]</span> <span class="log-${level}">[${level.toUpperCase()}]</span> ${escapeHtml(message)}`;
+            logView.appendChild(logLine);
+            logView.scrollTop = logView.scrollHeight;
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function clearLogs() {
+            const logView = document.getElementById('log-view');
+            logView.innerHTML = '<div class="log-line"><span class="log-time">[' + new Date().toLocaleTimeString() + ']</span> Logs cleared</div>';
+            currentLogs = [];
+        }
+        
+        async function refreshLogs() {
+            const deviceName = document.getElementById('logs-device-select').value;
+            if (deviceName) {
+                await loadDeviceLogs();
+            } else {
+                loadSystemLogs();
+            }
         }
         
         function updateProgress(percent, text) {
