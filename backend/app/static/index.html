@@ -416,6 +416,27 @@
             margin-right: 12px;
         }
         
+        /* Task Card */
+        .task-card {
+            transition: all 0.2s ease;
+        }
+        
+        .task-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        /* Background Task Indicator */
+        .background-task-indicator {
+            display: inline-flex;
+            align-items: center;
+            margin-left: 8px;
+        }
+        
+        .device-card[data-background-task="true"] {
+            border-color: var(--primary);
+            box-shadow: 0 0 8px rgba(3, 169, 244, 0.3);
+        }
+        
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         @keyframes slideOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
@@ -539,6 +560,7 @@
         <!-- Tabs -->
         <div class="tabs">
             <div class="tab active" data-tab="devices">Devices</div>
+            <div class="tab" data-tab="status">Status</div>
             <div class="tab" data-tab="yaml">YAML Editor</div>
             <div class="tab" data-tab="logs">Logs</div>
             <div class="tab" data-tab="settings">Settings</div>
@@ -599,6 +621,33 @@
                         <div class="loading">
                             <span class="material-icons">sync</span>
                             Loading devices...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Status Tab -->
+        <div class="tab-content" id="status-tab">
+            <div class="card">
+                <div class="card-header">
+                    <h2><span class="material-icons">schedule</span> Background Tasks</h2>
+                    <div>
+                        <button class="btn btn-outline" onclick="refreshTasks()">
+                            <span class="material-icons">refresh</span>
+                            Refresh
+                        </button>
+                        <button class="btn btn-outline" onclick="clearCompletedTasks()">
+                            <span class="material-icons">delete</span>
+                            Clear Completed
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="tasks-container">
+                        <div class="loading">
+                            <span class="material-icons">sync</span>
+                            Loading tasks...
                         </div>
                     </div>
                 </div>
@@ -1924,6 +1973,128 @@ Device-specific instructions:
             fetchHealth();
             fetchDevices();
         }
+        
+        // Background Tasks Functions
+        async function fetchTasks() {
+            try {
+                const response = await fetch(`${API_BASE}/api/tasks`);
+                const data = await response.json();
+                
+                const container = document.getElementById('tasks-container');
+                
+                if (!data.success || data.tasks.length === 0) {
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                            <span class="material-icons" style="font-size: 48px;">check_circle</span>
+                            <p>No background tasks running</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                container.innerHTML = data.tasks.map(task => `
+                    <div class="task-card" style="background: var(--card-bg); border-radius: 8px; padding: 16px; margin-bottom: 12px; border-left: 4px solid ${task.status === 'compiled' || task.status === 'uploaded' ? 'var(--success)' : task.status === 'error' ? 'var(--error)' : task.status === 'compiling' || task.status === 'uploading' ? 'var(--primary)' : 'var(--border)'};">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <div>
+                                <h4 style="margin: 0; font-size: 16px;">${task.device}</h4>
+                                <span style="font-size: 12px; color: var(--text-secondary);">${task.yaml_file || ''}</span>
+                            </div>
+                            <span style="background: ${task.status === 'compiled' || task.status === 'uploaded' ? 'var(--success)' : task.status === 'error' ? 'var(--error)' : 'var(--primary)'}; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px;">
+                                ${task.status}
+                            </span>
+                        </div>
+                        <div style="background: var(--border); border-radius: 4px; height: 8px; overflow: hidden;">
+                            <div style="background: ${task.status === 'compiled' || task.status === 'uploaded' ? 'var(--success)' : task.status === 'error' ? 'var(--error)' : 'var(--primary)'}; height: 100%; width: ${task.progress}%; transition: width 0.3s ease;"></div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; color: var(--text-secondary);">
+                            <span>Progress: ${task.progress}%</span>
+                            <span>${task.created ? new Date(task.created).toLocaleString() : ''}</span>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                console.error('Error fetching tasks:', e);
+                document.getElementById('tasks-container').innerHTML = `<div class="error-message">Error loading tasks: ${e.message}</div>`;
+            }
+        }
+        
+        function refreshTasks() {
+            fetchTasks();
+        }
+        
+        async function clearCompletedTasks() {
+            try {
+                const response = await fetch(`${API_BASE}/api/tasks`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    for (const task of data.tasks) {
+                        if (task.status === 'compiled' || task.status === 'uploaded' || task.status === 'error') {
+                            await fetch(`${API_BASE}/api/task/${task.task_id}`, { method: 'DELETE' });
+                        }
+                    }
+                    fetchTasks();
+                }
+            } catch (e) {
+                console.error('Error clearing tasks:', e);
+            }
+        }
+        
+        // Update device card with background task indicator
+        function updateDeviceTaskIndicator(deviceName, hasTask) {
+            const cards = document.querySelectorAll('.device-card');
+            cards.forEach(card => {
+                const nameEl = card.querySelector('.device-name');
+                if (nameEl && nameEl.textContent === deviceName) {
+                    if (hasTask) {
+                        card.setAttribute('data-background-task', 'true');
+                        if (!card.querySelector('.background-task-indicator')) {
+                            const indicator = document.createElement('span');
+                            indicator.className = 'background-task-indicator';
+                            indicator.innerHTML = '<span class="material-icons" style="animation: spin 1s linear infinite; font-size: 14px; margin-left: 8px;">sync</span>';
+                            indicator.style.cssText = 'color: var(--primary);';
+                            nameEl.appendChild(indicator);
+                        }
+                    } else {
+                        card.removeAttribute('data-background-task');
+                        const indicator = card.querySelector('.background-task-indicator');
+                        if (indicator) indicator.remove();
+                    }
+                }
+            });
+        }
+        
+        // Check for running tasks and update indicators
+        async function checkRunningTasks() {
+            try {
+                const response = await fetch(`${API_BASE}/api/tasks`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Remove all indicators first
+                    document.querySelectorAll('.background-task-indicator').forEach(el => el.remove());
+                    
+                    // Add indicators for running tasks
+                    for (const task of data.tasks) {
+                        if (task.status === 'compiling' || task.status === 'uploading' || task.status === 'starting') {
+                            updateDeviceTaskIndicator(task.device, true);
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error('Error checking tasks:', e);
+            }
+        }
+        
+        // Tab change handler
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabId = tab.dataset.tab;
+                if (tabId === 'status') {
+                    fetchTasks();
+                }
+            });
+        });
         
         // Settings Functions
         async function loadSettings() {
