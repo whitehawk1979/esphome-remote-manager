@@ -9,6 +9,7 @@ import json
 import asyncio
 import aiohttp
 import subprocess
+import logging
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 from fastapi import FastAPI, HTTPException, BackgroundTasks
@@ -16,9 +17,17 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import logging
 
-# Configuration
+# Request models
+class CompileRequest(BaseModel):
+    yaml_file: Optional[str] = None
+
+
+class UpdateRequest(BaseModel):
+    yaml_file: Optional[str] = None
+
+
+# Logging
 ESPHOME_API_URL = os.getenv("ESPHOME_API_URL", "http://192.168.1.64:7123")
 ESPHOME_API_USER = os.getenv("ESPHOME_API_USER", "esphome")
 ESPHOME_API_PASS = os.getenv("ESPHOME_API_PASS", "esphome")
@@ -418,20 +427,36 @@ async def save_yaml(device_name: str, yaml_data: dict):
 
 
 @app.post("/api/compile/{device_name}")
-async def compile_device(device_name: str, background_tasks: BackgroundTasks):
+async def compile_device(device_name: str, background_tasks: BackgroundTasks, request: Optional[CompileRequest] = None):
     """Compile device configuration using ESPHome CLI"""
     try:
         import subprocess
         
-        # Get device configuration filename
-        devices = await get_devices_from_dashboard()
-        yaml_file = f"{device_name}.yaml"
-        for device in devices:
-            if device["name"] == device_name:
-                yaml_file = device.get("configuration", f"{device_name}.yaml")
-                break
+        # Get YAML file from request or from cached devices
+        yaml_file = None
+        if request and request.yaml_file:
+            yaml_file = request.yaml_file
+        elif state.get("devices"):
+            # Use cached devices
+            for device in state["devices"]:
+                if device.get("name") == device_name:
+                    yaml_file = device.get("configuration")
+                    break
         
-        logger.info(f"Compiling {device_name} using {yaml_file}")
+        if not yaml_file:
+            # Try to get from devices one more time
+            devices = await get_devices_from_dashboard()
+            for device in devices:
+                if device.get("name") == device_name:
+                    yaml_file = device.get("configuration")
+                    break
+        
+        if not yaml_file:
+            yaml_file = f"{device_name}.yaml"
+        
+        final_yaml_file = yaml_file  # Capture for closure
+        
+        logger.info(f"Compiling {device_name} using {final_yaml_file}")
         
         # Trigger compile in background (ESPHome compile can take minutes)
         def run_compile():
@@ -439,7 +464,7 @@ async def compile_device(device_name: str, background_tasks: BackgroundTasks):
                 logger.info(f"Starting compile for {device_name}")
                 # Run esphome compile in the ESPHome container
                 result = subprocess.run(
-                    ["docker", "exec", "esphome", "esphome", "compile", yaml_file],
+                    ["docker", "exec", "esphome", "esphome", "compile", final_yaml_file],
                     capture_output=True,
                     text=True,
                     timeout=300  # 5 minutes timeout
@@ -460,7 +485,7 @@ async def compile_device(device_name: str, background_tasks: BackgroundTasks):
         return {
             "success": True,
             "device": device_name,
-            "yaml_file": yaml_file,
+            "yaml_file": final_yaml_file,
             "message": "Compile started",
             "status": "compiling"
         }
@@ -470,27 +495,52 @@ async def compile_device(device_name: str, background_tasks: BackgroundTasks):
 
 
 @app.post("/api/update/{device_name}")
-async def update_device(device_name: str, background_tasks: BackgroundTasks):
+async def update_device(device_name: str, background_tasks: BackgroundTasks, request: Optional[UpdateRequest] = None):
     """Update/OTA device using ESPHome CLI"""
     try:
         import subprocess
         
-        # Get device configuration filename
-        devices = await get_devices_from_dashboard()
-        yaml_file = f"{device_name}.yaml"
-        for device in devices:
-            if device["name"] == device_name:
-                yaml_file = device.get("configuration", f"{device_name}.yaml")
-                break
+        # Get YAML file and device address from request or from cached devices
+        yaml_file = None
+        device_addr = None
+        if request and request.yaml_file:
+            yaml_file = request.yaml_file
+        elif state.get("devices"):
+            # Use cached devices
+            for device in state["devices"]:
+                if device.get("name") == device_name:
+                    yaml_file = device.get("configuration")
+                    device_addr = device.get("address")  # Get device address for OTA
+                    break
         
-        logger.info(f"Updating {device_name} using {yaml_file}")
+        if not yaml_file:
+            # Try to get from devices one more time
+            devices = await get_devices_from_dashboard()
+            for device in devices:
+                if device.get("name") == device_name:
+                    yaml_file = device.get("configuration")
+                    device_addr = device.get("address")
+                    break
+        
+        if not yaml_file:
+            yaml_file = f"{device_name}.yaml"
+        
+        if not device_addr:
+            device_addr = f"{device_name}.local"  # Default mDNS address
+        
+        final_yaml_file = yaml_file  # Capture for closure
+        final_device_addr = device_addr  # Capture for closure
+        
+        logger.info(f"Updating {device_name} at {final_device_addr} using {final_yaml_file}")
         
         def run_upload():
             try:
                 logger.info(f"Starting update for {device_name}")
-                # Run esphome upload in the ESPHome container
+                # Run esphome upload with --device OTA to skip interactive prompt
+                # OTA mode automatically resolves device address from mDNS/DNS/MQTT
                 result = subprocess.run(
-                    ["docker", "exec", "esphome", "esphome", "upload", yaml_file],
+                    ["docker", "exec", "esphome", "esphome", "upload", 
+                     "--device", "OTA", final_yaml_file],
                     capture_output=True,
                     text=True,
                     timeout=300  # 5 minutes timeout
@@ -511,7 +561,7 @@ async def update_device(device_name: str, background_tasks: BackgroundTasks):
         return {
             "success": True,
             "device": device_name,
-            "yaml_file": yaml_file,
+            "yaml_file": final_yaml_file,
             "message": "Update started",
             "status": "updating"
         }
