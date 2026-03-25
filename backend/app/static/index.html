@@ -711,19 +711,19 @@
                         </div>
                         <div>
                             <label style="display: block; margin-bottom: 4px; font-weight: 500;">Platform</label>
-                            <select id="new-device-platform" style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px;">
-                                <option value="esp32">ESP32</option>
-                                <option value="esp8266">ESP8266</option>
-                                <option value="esp32-s3">ESP32-S3</option>
-                                <option value="esp32-c3">ESP32-C3</option>
+                            <select id="new-device-platform" style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px;" onchange="updateBoardOptions()">
+                                <option value="">Select platform...</option>
+                                <option value="ESP32">ESP32</option>
+                                <option value="ESP32-S2">ESP32-S2</option>
+                                <option value="ESP32-S3">ESP32-S3</option>
+                                <option value="ESP32-C3">ESP32-C3</option>
+                                <option value="ESP8266">ESP8266</option>
                             </select>
                         </div>
                         <div>
                             <label style="display: block; margin-bottom: 4px; font-weight: 500;">Board</label>
                             <select id="new-device-board" style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px;">
-                                <option value="esp32dev">esp32dev</option>
-                                <option value="nodemcu-32s">nodemcu-32s</option>
-                                <option value="esp32-s3-devkitc-1">esp32-s3-devkitc-1</option>
+                                <option value="">Select board...</option>
                             </select>
                         </div>
                         <div>
@@ -1109,6 +1109,59 @@
                     </div>
                 </div>
             `).join('');
+        }
+        
+        // ESP Board Options by Platform
+        const ESP_BOARDS = {
+            'ESP32': [
+                { value: 'esp32dev', name: 'ESP32 Dev Module' },
+                { value: 'nodemcu-32s', name: 'NodeMCU-32S' },
+                { value: 'esp32-cam', name: 'ESP32-CAM' },
+                { value: 'esp32-s2-kaluga-1', name: 'ESP32-S2-Kaluga-1' },
+                { value: 'ttgo-lora32', name: 'TTGO LoRa32' },
+                { value: 'ttgo-t-beam', name: 'TTGO T-Beam' },
+                { value: 'm5stack-core', name: 'M5Stack Core' },
+                { value: 'm5stick-c', name: 'M5Stick C' },
+                { value: 'wemos_d1_mini32', name: 'Wemos D1 Mini32' }
+            ],
+            'ESP32-S2': [
+                { value: 'esp32-s2-saola-1', name: 'ESP32-S2-Saola-1' },
+                { value: 'esp32-s2-kaluga-1', name: 'ESP32-S2-Kaluga-1' },
+                { value: 'seeed_xiao_esp32s2', name: 'Seeed XIAO ESP32-S2' }
+            ],
+            'ESP32-S3': [
+                { value: 'esp32-s3-devkitc-1', name: 'ESP32-S3-DevKitC-1' },
+                { value: 'esp32-s3-box-3', name: 'ESP32-S3-Box-3' },
+                { value: 'seeed_xiao_esp32s3', name: 'Seeed XIAO ESP32-S3' }
+            ],
+            'ESP32-C3': [
+                { value: 'esp32-c3-devkitc-02', name: 'ESP32-C3-DevKitC-02' },
+                { value: 'seeed_xiao_esp32c3', name: 'Seeed XIAO ESP32-C3' }
+            ],
+            'ESP8266': [
+                { value: 'esp01_1m', name: 'ESP01 (1MB)' },
+                { value: 'esp07', name: 'ESP07' },
+                { value: 'esp12e', name: 'ESP12E' },
+                { value: 'nodemcu', name: 'NodeMCU' },
+                { value: 'wemos_d1_mini', name: 'Wemos D1 Mini' },
+                { value: 'd1_mini', name: 'D1 Mini' }
+            ]
+        };
+        
+        function updateBoardOptionsOptions() {
+            const platform = document.getElementById('new-device-platform').value;
+            const boardSelect = document.getElementById('new-device-board');
+            
+            boardSelect.innerHTML = '<option value="">Select board...</option>';
+            
+            if (platform && ESP_BOARDS[platform]) {
+                ESP_BOARDS[platform].forEach(board => {
+                    const option = document.createElement('option');
+                    option.value = board.value;
+                    option.textContent = board.name;
+                    boardSelect.appendChild(option);
+                });
+            }
         }
         
         // Update Status Badge
