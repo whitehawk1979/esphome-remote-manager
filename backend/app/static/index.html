@@ -1025,12 +1025,12 @@
                     <div class="device-body">
                         <div class="device-info">
                             <div class="device-info-item">
-                                <label>Deployed</label>
-                                <span style="${device.update_available ? 'color: var(--success); font-weight: 600;' : ''}">${device.deployed_version || '-'}</span>
+                                <label>Firmware</label>
+                                <span style="${device.update_available ? 'color: var(--warning); font-weight: 600;' : ''}">${device.deployed_version || '-'}</span>
                             </div>
                             <div class="device-info-item">
-                                <label>Available</label>
-                                <span style="${device.update_available ? 'color: var(--warning); font-weight: 600;' : ''}">${device.current_version || '-'}</span>
+                                <label>Latest</label>
+                                <span style="${device.update_available ? 'color: var(--success); font-weight: 600;' : ''}">${device.current_version || '-'}</span>
                             </div>
                             <div class="device-info-item">
                                 <label>Address</label>
