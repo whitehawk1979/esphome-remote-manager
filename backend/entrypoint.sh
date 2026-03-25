@@ -26,6 +26,6 @@ EOF
     echo "Avahi daemon started"
 fi
 
-# Start the application
+# Start the application with WebSocket support
 echo "Starting ESPHome Remote Manager..."
-exec python -m uvicorn app:app --host 0.0.0.0 --port 8000
+exec python -m uvicorn app:app --host 0.0.0.0 --port 8000 --ws websockets

@@ -935,9 +935,17 @@ async def websocket_logs(websocket: WebSocket):
             # Handle ping/pong
             if data == "ping":
                 await websocket.send_text("pong")
+            else:
+                # Echo back for testing
+                await websocket.send_text(f"Received: {data}")
             
     except WebSocketDisconnect:
-        websocket_connections.remove(websocket)
+        if websocket in websocket_connections:
+            websocket_connections.remove(websocket)
+    except Exception as e:
+        logger.error(f"WebSocket error: {e}")
+        if websocket in websocket_connections:
+            websocket_connections.remove(websocket)
 
 
 @app.get("/api/yaml/{device_name}")
