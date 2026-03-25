@@ -773,11 +773,27 @@
                             <label style="display: block; margin-bottom: 4px; font-weight: 500;">Platform</label>
                             <select id="new-device-platform" style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px;" onchange="updateBoardOptions()">
                                 <option value="">Select platform...</option>
-                                <option value="ESP32">ESP32</option>
-                                <option value="ESP32-S2">ESP32-S2</option>
-                                <option value="ESP32-S3">ESP32-S3</option>
-                                <option value="ESP32-C3">ESP32-C3</option>
-                                <option value="ESP8266">ESP8266</option>
+                                <optgroup label="ESP32 Series">
+                                    <option value="ESP32">ESP32 (Original)</option>
+                                    <option value="ESP32-S2">ESP32-S2</option>
+                                    <option value="ESP32-S3">ESP32-S3</option>
+                                    <option value="ESP32-C3">ESP32-C3 (RISC-V)</option>
+                                    <option value="ESP32-C6">ESP32-C6</option>
+                                    <option value="ESP32-H2">ESP32-H2</option>
+                                    <option value="ESP32-P4">ESP32-P4</option>
+                                </optgroup>
+                                <optgroup label="ESP8266 Series">
+                                    <option value="ESP8266">ESP8266 (ESP-01/07/12/14)</option>
+                                </optgroup>
+                                <optgroup label="Arduino Compatible">
+                                    <option value="arduino_nano">Arduino Nano</option>
+                                    <option value="arduino_uno">Arduino Uno</option>
+                                    <option value="arduino_mega">Arduino Mega</option>
+                                    <option value="arduino_leonardo">Arduino Leonardo</option>
+                                </optgroup>
+                                <optgroup label="RP2040 Boards">
+                                    <option value="rp2040">Raspberry Pi Pico (RP2040)</option>
+                                </optgroup>
                             </select>
                         </div>
                         <div>
@@ -1276,34 +1292,129 @@ ota_password: myotapassword"></textarea>
                 { value: 'esp32dev', name: 'ESP32 Dev Module' },
                 { value: 'nodemcu-32s', name: 'NodeMCU-32S' },
                 { value: 'esp32-cam', name: 'ESP32-CAM' },
-                { value: 'esp32-s2-kaluga-1', name: 'ESP32-S2-Kaluga-1' },
                 { value: 'ttgo-lora32', name: 'TTGO LoRa32' },
                 { value: 'ttgo-t-beam', name: 'TTGO T-Beam' },
+                { value: 'ttgo-t-jeijei', name: 'TTGO T-Jeijei' },
                 { value: 'm5stack-core', name: 'M5Stack Core' },
+                { value: 'm5stack-core2', name: 'M5Stack Core2' },
                 { value: 'm5stick-c', name: 'M5Stick C' },
-                { value: 'wemos_d1_mini32', name: 'Wemos D1 Mini32' }
+                { value: 'm5stick-c-plus', name: 'M5Stick C Plus' },
+                { value: 'wemos_d1_mini32', name: 'Wemos D1 Mini32' },
+                { value: 'lolin-d32', name: 'LOLIN D32' },
+                { value: 'lolin-d32-pro', name: 'LOLIN D32 Pro' },
+                { value: 'featheresp32', name: 'Adafruit Feather ESP32' },
+                { value: 'firebeetle32', name: 'FireBeetle ESP32' },
+                { value: 'esp32-poe-iso', name: 'ESP32 POE ISO' },
+                { value: 'az-delivery-devkit-v4', name: 'AZ-Delivery DevKit V4' },
+                { value: 'esp32-pico-kit', name: 'ESP32 Pico Kit' },
+                { value: 'lilygo-t-display', name: 'LILYGO T-Display' },
+                { value: 'lilygo-t-echo', name: 'LILYGO T-Echo' },
+                { value: 'esp32-thing', name: 'SparkFun ESP32 Thing' },
+                { value: 'esp32-thing-plus', name: 'SparkFun ESP32 Thing Plus' },
+                { value: 'esp32-edgin', name: 'ESP32 Edgin' },
+                { value: 'heltec_wifi_kit_32', name: 'Heltec WiFi Kit 32' },
+                { value: 'heltec_wifi_lora_32', name: 'Heltec WiFi LoRa 32' },
+                { value: 'heltec_wifi_lora_32_v2', name: 'Heltec WiFi LoRa 32 V2' },
+                { value: 'heltec_wifi_lora_32_v3', name: 'Heltec WiFi LoRa 32 V3' }
             ],
             'ESP32-S2': [
                 { value: 'esp32-s2-saola-1', name: 'ESP32-S2-Saola-1' },
                 { value: 'esp32-s2-kaluga-1', name: 'ESP32-S2-Kaluga-1' },
-                { value: 'seeed_xiao_esp32s2', name: 'Seeed XIAO ESP32-S2' }
+                { value: 'seeed_xiao_esp32s2', name: 'Seeed XIAO ESP32-S2' },
+                { value: 'esp32s2usbcam', name: 'ESP32-S2 USB Camera' },
+                { value: 'adafruit_feather_esp32s2', name: 'Adafruit Feather ESP32-S2' },
+                { value: 'adafruit_esp32s2_tft_feather', name: 'Adafruit ESP32-S2 TFT Feather' },
+                { value: 'lilygo_t_beamsupreme', name: 'LILYGO T-Beam Supreme' }
             ],
             'ESP32-S3': [
                 { value: 'esp32-s3-devkitc-1', name: 'ESP32-S3-DevKitC-1' },
                 { value: 'esp32-s3-box-3', name: 'ESP32-S3-Box-3' },
-                { value: 'seeed_xiao_esp32s3', name: 'Seeed XIAO ESP32-S3' }
+                { value: 'esp32-s3-box-lite', name: 'ESP32-S3-Box Lite' },
+                { value: 'seeed_xiao_esp32s3', name: 'Seeed XIAO ESP32-S3' },
+                { value: 'lilygo_t_display_s3', name: 'LILYGO T-Display S3' },
+                { value: 'lilygo_t7_s3', name: 'LILYGO T7 S3' },
+                { value: 'lilygo_t_camera_s3', name: 'LILYGO T-Camera S3' },
+                { value: 'adafruit_feather_esp32s3', name: 'Adafruit Feather ESP32-S3' },
+                { value: 'adafruit_esp32s3_tft_feather', name: 'Adafruit ESP32-S3 TFT Feather' },
+                { value: 'heltec_wifi_kit_32_v3', name: 'Heltec WiFi Kit 32 V3' },
+                { value: 'heltec_vision_master_e213', name: 'Heltec Vision Master E213' },
+                { value: 'esp32-s3-eye', name: 'ESP32-S3 Eye' }
             ],
             'ESP32-C3': [
                 { value: 'esp32-c3-devkitc-02', name: 'ESP32-C3-DevKitC-02' },
-                { value: 'seeed_xiao_esp32c3', name: 'Seeed XIAO ESP32-C3' }
+                { value: 'esp32-c3-devkitm-1', name: 'ESP32-C3-DevKitM-1' },
+                { value: 'seeed_xiao_esp32c3', name: 'Seeed XIAO ESP32-C3' },
+                { value: 'lolin_c3_mini', name: 'LOLIN C3 Mini' },
+                { value: 'heltec_wireless_tracker', name: 'Heltec Wireless Tracker' }
+            ],
+            'ESP32-C6': [
+                { value: 'esp32-c6-devkitc-1', name: 'ESP32-C6-DevKitC-1' },
+                { value: 'esp32-c6-devkitm-1', name: 'ESP32-C6-DevKitM-1' },
+                { value: 'seeed_xiao_esp32c6', name: 'Seeed XIAO ESP32-C6' },
+                { value: 'lolin_c6_mini', name: 'LOLIN C6 Mini' }
+            ],
+            'ESP32-H2': [
+                { value: 'esp32-h2-devkitm-1', name: 'ESP32-H2-DevKitM-1' }
+            ],
+            'ESP32-P4': [
+                { value: 'esp32-p4-function-ev-board', name: 'ESP32-P4 Function EV Board' }
             ],
             'ESP8266': [
                 { value: 'esp01_1m', name: 'ESP01 (1MB)' },
+                { value: 'esp01', name: 'ESP01 (512KB)' },
                 { value: 'esp07', name: 'ESP07' },
+                { value: 'esp07s', name: 'ESP07S' },
                 { value: 'esp12e', name: 'ESP12E' },
+                { value: 'esp12s', name: 'ESP12S' },
                 { value: 'nodemcu', name: 'NodeMCU' },
+                { value: 'nodemcuv2', name: 'NodeMCU V2' },
                 { value: 'wemos_d1_mini', name: 'Wemos D1 Mini' },
-                { value: 'd1_mini', name: 'D1 Mini' }
+                { value: 'd1_mini', name: 'D1 Mini' },
+                { value: 'd1_mini_lite', name: 'D1 Mini Lite' },
+                { value: 'd1_mini_pro', name: 'D1 Mini Pro' },
+                { value: 'lolin_d1_mini_pro', name: 'LOLIN D1 Mini Pro' },
+                { value: 'wemos_d1', name: 'Wemos D1' },
+                { value: 'wemos_d1_pro', name: 'Wemos D1 Pro' },
+                { value: 'sonoff_basic', name: 'Sonoff Basic' },
+                { value: 'sonoff_s20', name: 'Sonoff S20' },
+                { value: 'sonoff_th', name: 'Sonoff TH' },
+                { value: 'sonoff_touch', name: 'Sonoff Touch' },
+                { value: 'sonoff_pow', name: 'Sonoff POW' },
+                { value: 'sonoff_dual', name: 'Sonoff Dual' },
+                { value: 'sonoff_4ch', name: 'Sonoff 4CH' },
+                { value: 'shelly1', name: 'Shelly 1' },
+                { value: 'shelly1pm', name: 'Shelly 1PM' },
+                { value: 'shelly2', name: 'Shelly 2' },
+                { value: 'shelly25', name: 'Shelly 2.5' },
+                { value: 'shelly_plug', name: 'Shelly Plug' },
+                { value: 'wifinfo', name: 'WiFi Info' },
+                { value: 'ikea_espnow', name: 'IKEA ESP-NOW' },
+                { value: 'irwifi_switch', name: 'IR-WiFi Switch' },
+                { value: 'lolin_d1_mini', name: 'LOLIN D1 Mini' },
+                { value: 'lolin_d1_mini_pro', name: 'LOLIN D1 Mini Pro' },
+                { value: 'lolin_d1_mini_lite', name: 'LOLIN D1 Mini Lite' },
+                { value: 'genetic_esp8266', name: 'Generic ESP8266' }
+            ],
+            'arduino_nano': [
+                { value: 'arduino_nano', name: 'Arduino Nano' }
+            ],
+            'arduino_uno': [
+                { value: 'arduino_uno', name: 'Arduino Uno' }
+            ],
+            'arduino_mega': [
+                { value: 'arduino_mega', name: 'Arduino Mega 2560' }
+            ],
+            'arduino_leonardo': [
+                { value: 'arduino_leonardo', name: 'Arduino Leonardo' }
+            ],
+            'rp2040': [
+                { value: 'pico', name: 'Raspberry Pi Pico' },
+                { value: 'pico_w', name: 'Raspberry Pi Pico W' },
+                { value: 'pico2', name: 'Raspberry Pi Pico 2' },
+                { value: 'adafruit_feather_rp2040', name: 'Adafruit Feather RP2040' },
+                { value: 'adafruit_itsybitsy_rp2040', name: 'Adafruit ItsyBitsy RP2040' },
+                { value: 'adafruit_qt_py_rp2040', name: 'Adafruit QT Py RP2040' },
+                { value: 'weact_studio_pico', name: 'WeAct Studio Pico' }
             ]
         };
         
