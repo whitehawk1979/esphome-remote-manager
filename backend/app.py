@@ -418,30 +418,83 @@ async def save_yaml(device_name: str, yaml_data: dict):
 
 
 @app.post("/api/compile/{device_name}")
-async def compile_device(device_name: str):
-    """Compile device configuration"""
+async def compile_device(device_name: str, background_tasks: BackgroundTasks):
+    """Compile device configuration using ESPHome CLI"""
     try:
-        result = await call_esphome_api(f"/api/compile/{device_name}", method="POST")
+        import subprocess
+        
+        # Trigger compile in background (ESPHome compile can take minutes)
+        def run_compile():
+            try:
+                logger.info(f"Starting compile for {device_name}")
+                # Run esphome compile in the ESPHome container
+                result = subprocess.run(
+                    ["docker", "exec", "esphome", "esphome", "compile", f"{device_name}.yaml"],
+                    capture_output=True,
+                    text=True,
+                    timeout=300  # 5 minutes timeout
+                )
+                logger.info(f"Compile result for {device_name}: returncode={result.returncode}")
+                if result.returncode != 0:
+                    logger.error(f"Compile error for {device_name}: {result.stderr}")
+                else:
+                    logger.info(f"Compile successful for {device_name}")
+            except subprocess.TimeoutExpired:
+                logger.error(f"Compile timeout for {device_name}")
+            except Exception as e:
+                logger.error(f"Compile exception for {device_name}: {e}")
+        
+        # Run in background
+        background_tasks.add_task(run_compile)
+        
         return {
-            "success": "error" not in result,
+            "success": True,
             "device": device_name,
-            "result": result
+            "message": "Compile started",
+            "status": "compiling"
         }
     except Exception as e:
+        logger.error(f"Failed to compile {device_name}: {e}")
         return {"success": False, "error": str(e), "device": device_name}
 
 
-@app.post("/api/upload/{device_name}")
-async def upload_device(device_name: str):
-    """Upload/OTA device"""
+@app.post("/api/update/{device_name}")
+async def update_device(device_name: str, background_tasks: BackgroundTasks):
+    """Update/OTA device using ESPHome CLI"""
     try:
-        result = await call_esphome_api(f"/api/upload/{device_name}", method="POST")
+        import subprocess
+        
+        def run_upload():
+            try:
+                logger.info(f"Starting update for {device_name}")
+                # Run esphome upload in the ESPHome container
+                result = subprocess.run(
+                    ["docker", "exec", "esphome", "esphome", "upload", f"{device_name}.yaml"],
+                    capture_output=True,
+                    text=True,
+                    timeout=300  # 5 minutes timeout
+                )
+                logger.info(f"Upload result for {device_name}: returncode={result.returncode}")
+                if result.returncode != 0:
+                    logger.error(f"Upload error for {device_name}: {result.stderr}")
+                else:
+                    logger.info(f"Upload successful for {device_name}")
+            except subprocess.TimeoutExpired:
+                logger.error(f"Upload timeout for {device_name}")
+            except Exception as e:
+                logger.error(f"Upload exception for {device_name}: {e}")
+        
+        # Run in background
+        background_tasks.add_task(run_upload)
+        
         return {
-            "success": "error" not in result,
+            "success": True,
             "device": device_name,
-            "result": result
+            "message": "Update started",
+            "status": "updating"
         }
     except Exception as e:
+        logger.error(f"Failed to update {device_name}: {e}")
         return {"success": False, "error": str(e), "device": device_name}
 
 
