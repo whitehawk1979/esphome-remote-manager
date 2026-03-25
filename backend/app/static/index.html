@@ -1528,23 +1528,23 @@
         
         function closeUploadModal() {
             document.getElementById('upload-modal').classList.remove('active');
-            currentUploadDevice = null;
         }
         
         async function startUpload(type) {
             if (!currentUploadDevice) return;
             
+            const deviceName = currentUploadDevice; // Save before closing modal
             closeUploadModal();
             
             if (type === 'ota') {
                 // OTA upload - same as updateDevice
-                await updateDevice(currentUploadDevice);
+                await updateDevice(deviceName);
             } else if (type === 'download') {
                 // Download firmware
-                await downloadFirmware(currentUploadDevice);
+                await downloadFirmware(deviceName);
             } else if (type === 'manual') {
                 // Show manual upload instructions
-                showManualUploadInstructions(currentUploadDevice);
+                showManualUploadInstructions(deviceName);
             }
         }
         
