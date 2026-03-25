@@ -3070,6 +3070,582 @@ fan:
     id: message_text
     optimistic: true
     max_length: 255`
+            },
+            // I2C Components
+            'i2c.base': {
+                name: 'I2C Bus',
+                category: 'network',
+                params: [
+                    { name: 'sda', label: 'SDA Pin', default: 'GPIO21' },
+                    { name: 'scl', label: 'SCL Pin', default: 'GPIO22' }
+                ],
+                template: `i2c:
+  sda: {{sda}}
+  scl: {{scl}}
+  scan: true
+  id: i2c_bus`
+            },
+            // SPI Components
+            'spi.base': {
+                name: 'SPI Bus',
+                category: 'network',
+                params: [
+                    { name: 'mosi', label: 'MOSI Pin', default: 'GPIO23' },
+                    { name: 'miso', label: 'MISO Pin', default: 'GPIO19' },
+                    { name: 'clk', label: 'CLK Pin', default: 'GPIO18' }
+                ],
+                template: `spi:
+  mosi_pin: {{mosi}}
+  miso_pin: {{miso}}
+  clk_pin: {{clk}}
+  id: spi_bus`
+            },
+            // UART Components
+            'uart.base': {
+                name: 'UART Bus',
+                category: 'network',
+                params: [
+                    { name: 'tx', label: 'TX Pin', default: 'GPIO1' },
+                    { name: 'rx', label: 'RX Pin', default: 'GPIO3' },
+                    { name: 'baud', label: 'Baud Rate', default: '9600' }
+                ],
+                template: `uart:
+  tx_pin: {{tx}}
+  rx_pin: {{rx}}
+  baud_rate: {{baud}}
+  id: uart_bus`
+            },
+            // OneWire
+            'onewire.base': {
+                name: 'OneWire Bus',
+                category: 'network',
+                params: [
+                    { name: 'pin', label: 'GPIO Pin', default: 'GPIO4' }
+                ],
+                template: `one_wire:
+  - pin: {{pin}}
+    id: onewire_bus`
+            },
+            // GPS
+            'sensor.gps': {
+                name: 'GPS Sensor',
+                category: 'sensor',
+                params: [
+                    { name: 'name', label: 'Name', default: 'GPS' }
+                ],
+                template: `uart:
+  tx_pin: GPIO17
+  rx_pin: GPIO16
+  baud_rate: 9600
+
+gps:
+  id: gps_module
+
+sensor:
+  - platform: gps
+    latitude:
+      name: "{{name}} Latitude"
+    longitude:
+      name: "{{name}} Longitude"
+    altitude:
+      name: "{{name}} Altitude"
+    speed:
+      name: "{{name}} Speed"`
+            },
+            // Bluetooth
+            'bluetooth.base': {
+                name: 'Bluetooth Tracker',
+                category: 'network',
+                params: [
+                    { name: 'name', label: 'Name', default: 'BLE Tracker' }
+                ],
+                template: `esp32_ble_tracker:
+  scan_parameters:
+    interval: 300ms
+    window: 30ms
+    duration: 10s
+
+bluetooth_proxy:
+  active: true`
+            },
+            // AHT10
+            'sensor.aht10': {
+                name: 'AHT10 Temp/Humidity',
+                category: 'sensor',
+                params: [
+                    { name: 'name', label: 'Name', default: 'AHT10' }
+                ],
+                template: `i2c:
+  sda: GPIO21
+  scl: GPIO22
+
+sensor:
+  - platform: aht10
+    temperature:
+      name: "{{name}} Temperature"
+    humidity:
+      name: "{{name}} Humidity"
+    update_interval: 60s`
+            },
+            // SHT3x
+            'sensor.sht3x': {
+                name: 'SHT3x Temp/Humidity',
+                category: 'sensor',
+                params: [
+                    { name: 'name', label: 'Name', default: 'SHT3x' }
+                ],
+                template: `i2c:
+  sda: GPIO21
+  scl: GPIO22
+
+sensor:
+  - platform: sht3xd
+    temperature:
+      name: "{{name}} Temperature"
+    humidity:
+      name: "{{name}} Humidity"
+    address: 0x44
+    update_interval: 60s`
+            },
+            // BMP280
+            'sensor.bmp280': {
+                name: 'BMP280 Temp/Pressure',
+                category: 'sensor',
+                params: [
+                    { name: 'name', label: 'Name', default: 'BMP280' }
+                ],
+                template: `i2c:
+  sda: GPIO21
+  scl: GPIO22
+
+sensor:
+  - platform: bmp280_i2c
+    temperature:
+      name: "{{name}} Temperature"
+    pressure:
+      name: "{{name}} Pressure"
+    address: 0x76
+    update_interval: 60s`
+            },
+            // MPU6050
+            'sensor.mpu6050': {
+                name: 'MPU6050 Accelerometer',
+                category: 'sensor',
+                params: [
+                    { name: 'name', label: 'Name', default: 'MPU6050' }
+                ],
+                template: `i2c:
+  sda: GPIO21
+  scl: GPIO22
+
+sensor:
+  - platform: mpu6050
+    address: 0x68
+    accel_x:
+      name: "{{name}} Accel X"
+    accel_y:
+      name: "{{name}} Accel Y"
+    accel_z:
+      name: "{{name}} Accel Z"
+    gyro_x:
+      name: "{{name}} Gyro X"
+    gyro_y:
+      name: "{{name}} Gyro Y"
+    gyro_z:
+      name: "{{name}} Gyro Z"
+    temperature:
+      name: "{{name}} Temperature"`
+            },
+            // HMC5883L
+            'sensor.hmc5883l': {
+                name: 'HMC5883L Compass',
+                category: 'sensor',
+                params: [
+                    { name: 'name', label: 'Name', default: 'Compass' }
+                ],
+                template: `i2c:
+  sda: GPIO21
+  scl: GPIO22
+
+sensor:
+  - platform: hmc5883l
+    address: 0x1E
+    field_strength_x:
+      name: "{{name}} X"
+    field_strength_y:
+      name: "{{name}} Y"
+    field_strength_z:
+      name: "{{name}} Z"
+    heading:
+      name: "{{name}} Heading"`
+            },
+            // TSL2561
+            'sensor.tsl2561': {
+                name: 'TSL2561 Light',
+                category: 'sensor',
+                params: [
+                    { name: 'name', label: 'Name', default: 'Light' }
+                ],
+                template: `i2c:
+  sda: GPIO21
+  scl: GPIO22
+
+sensor:
+  - platform: tsl2561
+    name: "{{name}}"
+    address: 0x39
+    update_interval: 60s`
+            },
+            // VL53L0X
+            'sensor.vl53l0x': {
+                name: 'VL53L0X Distance',
+                category: 'sensor',
+                params: [
+                    { name: 'name', label: 'Name', default: 'Distance' }
+                ],
+                template: `i2c:
+  sda: GPIO21
+  scl: GPIO22
+
+sensor:
+  - platform: vl53l0x
+    name: "{{name}}"
+    update_interval: 60s
+    signal_rate_limit: 0.1`
+            },
+            // HX711
+            'sensor.hx711': {
+                name: 'HX711 Load Cell',
+                category: 'sensor',
+                params: [
+                    { name: 'name', label: 'Name', default: 'Weight' },
+                    { name: 'dout', label: 'DOUT Pin', default: 'GPIO4' },
+                    { name: 'clk', label: 'CLK Pin', default: 'GPIO5' }
+                ],
+                template: `sensor:
+  - platform: hx711
+    name: "{{name}}"
+    dout_pin: {{dout}}
+    clk_pin: {{clk}}
+    gain: 128
+    update_interval: 1s`
+            },
+            // INA219
+            'sensor.ina219': {
+                name: 'INA219 Power Monitor',
+                category: 'sensor',
+                params: [
+                    { name: 'name', label: 'Name', default: 'Power' }
+                ],
+                template: `i2c:
+  sda: GPIO21
+  scl: GPIO22
+
+sensor:
+  - platform: ina219
+    address: 0x40
+    shunt_resistance: 0.1 ohm
+    current:
+      name: "{{name}} Current"
+    power:
+      name: "{{name}} Power"
+    bus_voltage:
+      name: "{{name}} Bus Voltage"
+    shunt_voltage:
+      name: "{{name}} Shunt Voltage"
+    max_current: 3.2A
+    update_interval: 60s`
+            },
+            // Pzem
+            'sensor.pzemac': {
+                name: 'PZEM-004T Energy',
+                category: 'sensor',
+                params: [
+                    { name: 'name', label: 'Name', default: 'Energy' }
+                ],
+                template: `uart:
+  rx_pin: GPIO16
+  tx_pin: GPIO17
+  baud_rate: 9600
+
+sensor:
+  - platform: pzemac
+    current:
+      name: "{{name}} Current"
+    voltage:
+      name: "{{name}} Voltage"
+    power:
+      name: "{{name}} Power"
+    energy:
+      name: "{{name}} Energy"
+    update_interval: 60s`
+            },
+            // RC522 RFID
+            'binary_sensor.rc522': {
+                name: 'RC522 RFID Reader',
+                category: 'binary_sensor',
+                params: [
+                    { name: 'name', label: 'Name', default: 'RFID' },
+                    { name: 'cs', label: 'CS Pin', default: 'GPIO5' },
+                    { name: 'sck', label: 'SCK Pin', default: 'GPIO18' },
+                    { name: 'mosi', label: 'MOSI Pin', default: 'GPIO23' },
+                    { name: 'miso', label: 'MISO Pin', default: 'GPIO19' }
+                ],
+                template: `spi:
+  clk_pin: {{sck}}
+  mosi_pin: {{mosi}}
+  miso_pin: {{miso}}
+
+rc522_spi:
+  cs_pin: {{cs}}
+  id: rfid_reader
+  on_tag:
+    then:
+      - logger.log: "Tag detected!"
+
+binary_sensor:
+  - platform: rc522
+    name: "{{name}}"
+    uid: "00-00-00-00"`
+            },
+            // PN532 RFID
+            'binary_sensor.pn532': {
+                name: 'PN532 RFID Reader',
+                category: 'binary_sensor',
+                params: [
+                    { name: 'name', label: 'Name', default: 'RFID' }
+                ],
+                template: `i2c:
+  sda: GPIO21
+  scl: GPIO22
+
+pn532_i2c:
+  id: pn532
+  on_tag:
+    then:
+      - logger.log: "Tag detected!"
+
+binary_sensor:
+  - platform: pn532
+    name: "{{name}}"
+    uid: "00-00-00-00"`
+            },
+            // IR Transmitter
+            'remote_transmitter.ir': {
+                name: 'IR Transmitter',
+                category: 'output',
+                params: [
+                    { name: 'pin', label: 'GPIO Pin', default: 'GPIO4' }
+                ],
+                template: `remote_transmitter:
+  - id: ir_transmitter
+    pin: {{pin}}
+    carrier_duty_percent: 50%`
+            },
+            // IR Receiver
+            'binary_sensor.ir_receiver': {
+                name: 'IR Receiver',
+                category: 'binary_sensor',
+                params: [
+                    { name: 'name', label: 'Name', default: 'IR' },
+                    { name: 'pin', label: 'GPIO Pin', default: 'GPIO5' }
+                ],
+                template: `remote_receiver:
+  - id: ir_receiver
+    pin:
+      number: {{pin}}
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+
+binary_sensor:
+  - platform: remote_receiver
+    name: "{{name}}"
+    rc5:
+      address: 0x00
+      command: 0x00`
+            },
+            // Stepper Motor
+            'output.stepper': {
+                name: 'Stepper Motor',
+                category: 'output',
+                params: [
+                    { name: 'name', label: 'Name', default: 'Stepper' },
+                    { name: 'step', label: 'Step Pin', default: 'GPIO5' },
+                    { name: 'dir', label: 'DirPin', default: 'GPIO4' }
+                ],
+                template: `stepper:
+  - platform: a4988
+    id: {{name}}
+    step_pin: {{step}}
+    dir_pin: {{dir}}
+    sleep_pin: GPIO12
+    max_speed: 250 steps/s
+    acceleration: 100 steps/s^2
+    deceleration: 100 steps/s^2`
+            },
+            // CAN Bus
+            'canbus.base': {
+                name: 'CAN Bus',
+                category: 'network',
+                params: [
+                    { name: 'tx', label: 'TX Pin', default: 'GPIO5' },
+                    { name: 'rx', label: 'RX Pin', default: 'GPIO4' }
+                ],
+                template: `canbus:
+  - platform: esp32_can
+    tx_pin: {{tx}}
+    rx_pin: {{rx}}
+    can_id: 1
+    bit_rate: 125kbps
+    on_frame:
+      - can_id: 0
+        then:
+          - logger.log: "CAN frame received"`
+            },
+            // Modbus
+            'modbus.base': {
+                name: 'Modbus',
+                category: 'network',
+                params: [
+                    { name: 'tx', label: 'TX Pin', default: 'GPIO16' },
+                    { name: 'rx', label: 'RX Pin', default: 'GPIO17' }
+                ],
+                template: `uart:
+  tx_pin: {{tx}}
+  rx_pin: {{rx}}
+  baud_rate: 9600
+
+modbus:
+  id: modbus1
+
+modbus_controller:
+  - id: modbus_controller
+    address: 0x01
+    modbus_id: modbus1`
+            },
+            // Nextion Display
+            'display.nextion': {
+                name: 'Nextion Display',
+                category: 'display',
+                params: [
+                    { name: 'name', label: 'Name', default: 'Display' }
+                ],
+                template: `uart:
+  tx_pin: GPIO16
+  rx_pin: GPIO17
+  baud_rate: 115200
+
+display:
+  - platform: nextion
+    id: nextion_display
+    update_interval: 5s
+    on_setup:
+      then:
+        - logger.log: "Nextion display initialized"`
+            },
+            // TM1637 Display
+            'display.tm1637': {
+                name: 'TM1637 7-Segment',
+                category: 'display',
+                params: [
+                    { name: 'name', label: 'Name', default: 'Display' },
+                    { name: 'clk', label: 'CLK Pin', default: 'GPIO5' },
+                    { name: 'dio', label: 'DIO Pin', default: 'GPIO4' }
+                ],
+                template: `display:
+  - platform: tm1637
+    id: tm1637_display
+    clk_pin: {{clk}}
+    dio_pin: {{dio}}
+    lambda: |-
+      it.print("1234");`
+            },
+            // Max7219 Display
+            'display.max7219': {
+                name: 'MAX7219 LED Matrix',
+                category: 'display',
+                params: [
+                    { name: 'name', label: 'Name', default: 'Matrix' },
+                    { name: 'cs', label: 'CS Pin', default: 'GPIO5' },
+                    { name: 'clk', label: 'CLK Pin', default: 'GPIO18' },
+                    { name: 'mosi', label: 'MOSI Pin', default: 'GPIO23' }
+                ],
+                template: `spi:
+  clk_pin: {{clk}}
+  mosi_pin: {{mosi}}
+
+display:
+  - platform: max7219
+    id: matrix_display
+    cs_pin: {{cs}}
+    num_chips: 1
+    lambda: |-
+      it.print("HELLO");`
+            },
+            // Home Assistant Sensor
+            'sensor.homeassistant': {
+                name: 'HA Sensor Import',
+                category: 'sensor',
+                params: [
+                    { name: 'name', label: 'Name', default: 'HA Sensor' },
+                    { name: 'entity', label: 'Entity ID', default: 'sensor.temperature' }
+                ],
+                template: `sensor:
+  - platform: homeassistant
+    name: "{{name}}"
+    entity_id: {{entity}}
+    id: ha_sensor`
+            },
+            // Time
+            'time.sntp': {
+                name: 'SNTP Time',
+                category: 'network',
+                params: [
+                    { name: 'timezone', label: 'Timezone', default: 'Europe/Bucharest' }
+                ],
+                template: `time:
+  - platform: sntp
+    id: time_source
+    timezone: "{{timezone}}"
+    on_time:
+      - seconds: 0
+        minutes: 0
+        then:
+          - logger.log: "Hourly update"`
+            },
+            // captive_portal
+            'network.captive_portal': {
+                name: 'Captive Portal',
+                category: 'network',
+                params: [],
+                template: `captive_portal:`
+            },
+            // Deep Sleep
+            'deep_sleep.base': {
+                name: 'Deep Sleep',
+                category: 'network',
+                params: [
+                    { name: 'duration', label: 'Duration', default: '10min' }
+                ],
+                template: `deep_sleep:
+  run_duration: 10s
+  sleep_duration: {{duration}}
+  wakeup_pin: GPIO0
+  wakeup_pin_mode: INVERT_WAKEUP`
+            },
+            // Interval
+            'interval.base': {
+                name: 'Interval Timer',
+                category: 'sensor',
+                params: [
+                    { name: 'interval', label: 'Interval', default: '60s' }
+                ],
+                template: `interval:
+  - interval: {{interval}}
+    then:
+      - logger.log: "Interval triggered"`
             }
         };
         
@@ -3202,14 +3778,46 @@ fan:
                 'text': 'Text'
             };
             
+            renderTemplatesSidebar(categories, '');
+            
+            // Add search functionality
+            const searchInput = document.getElementById('template-search');
+            if (searchInput) {
+                searchInput.addEventListener('input', (e) => {
+                    const query = e.target.value.toLowerCase();
+                    renderTemplatesSidebar(categories, query);
+                });
+            }
+        }
+        
+        // Render templates sidebar with optional search filter
+        function renderTemplatesSidebar(categories, searchQuery) {
+            const sidebar = document.getElementById('templates-list');
+            if (!sidebar) return;
+            
             let html = '';
             for (const [cat, catName] of Object.entries(categories)) {
+                // Filter templates by category and search query
+                const matchingTemplates = Object.entries(TEMPLATES)
+                    .filter(([key, template]) => {
+                        if (template.category !== cat) return false;
+                        if (!searchQuery) return true;
+                        // Search in name and key
+                        const nameMatch = template.name.toLowerCase().includes(searchQuery);
+                        const keyMatch = key.toLowerCase().includes(searchQuery);
+                        return nameMatch || keyMatch;
+                    });
+                
+                if (matchingTemplates.length === 0) continue;
+                
                 html += `<div style="margin-top: 12px;"><strong style="font-size: 12px; color: var(--text-secondary);">${catName}</strong></div>`;
-                for (const [key, template] of Object.entries(TEMPLATES)) {
-                    if (template.category === cat) {
-                        html += `<button class="btn btn-outline" style="width: 100%; margin-top: 4px; text-align: left; font-size: 12px;" onclick="showTemplateModal('${cat}'); setTimeout(() => { document.getElementById('template-selector').value='${key}'; loadTemplateParams(); }, 100);">${template.name}</button>`;
-                    }
+                for (const [key, template] of matchingTemplates) {
+                    html += `<button class="btn btn-outline" style="width: 100%; margin-top: 4px; text-align: left; font-size: 12px;" onclick="showTemplateModal('${template.category}'); setTimeout(() => { document.getElementById('template-selector').value='${key}'; loadTemplateParams(); }, 100);">${template.name}</button>`;
                 }
+            }
+            
+            if (!html && searchQuery) {
+                html = '<div style="color: var(--text-secondary); padding: 8px; text-align: center;">No templates found</div>';
             }
             
             sidebar.innerHTML = html;
