@@ -255,7 +255,25 @@ async def get_devices_from_dashboard() -> List[Dict[str, Any]]:
                     for device in data.get("configured", []):
                         deployed_version = device.get("deployed_version", "unknown")
                         current_version = device.get("current_version", "unknown")
-                        update_available = deployed_version != current_version if deployed_version != "unknown" and current_version != "unknown" else False
+                        
+                        # Update available if deployed_version < current_version (device firmware older than dashboard)
+                        # deployed_version = device firmware version
+                        # current_version = ESPHome Dashboard version
+                        update_available = False
+                        if deployed_version != "unknown" and current_version != "unknown":
+                            try:
+                                # Compare version strings like "2026.3.1" vs "2025.12.0"
+                                deployed_parts = [int(x) for x in deployed_version.split('.')]
+                                current_parts = [int(x) for x in current_version.split('.')]
+                                # Pad to same length
+                                max_len = max(len(deployed_parts), len(current_parts))
+                                deployed_parts.extend([0] * (max_len - len(deployed_parts)))
+                                current_parts.extend([0] * (max_len - len(current_parts)))
+                                # Update available if deployed < current
+                                update_available = deployed_parts < current_parts
+                            except (ValueError, AttributeError):
+                                # If version comparison fails, just check if different
+                                update_available = deployed_version != current_version
                         
                         devices.append({
                             "name": device.get("name", "unknown"),
