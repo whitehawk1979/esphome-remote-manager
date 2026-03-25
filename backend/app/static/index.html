@@ -239,6 +239,9 @@
         .btn-success { background: var(--success); color: white; }
         .btn-success:hover { background: #43a047; }
         
+        .btn-warning { background: #ff9800; color: white; }
+        .btn-warning:hover { background: #f57c00; }
+        
         .btn-outline {
             background: transparent;
             border: 1px solid var(--primary);
@@ -670,6 +673,10 @@
                         <button class="btn btn-success" onclick="saveYaml()">
                             <span class="material-icons">save</span>
                             Save
+                        </button>
+                        <button class="btn btn-warning" onclick="uploadFromYaml()" id="yaml-upload-btn" style="display: none;">
+                            <span class="material-icons">upload</span>
+                            Upload
                         </button>
                         <button class="btn btn-outline" onclick="showNewDeviceModal()" style="border-color: var(--success); color: var(--success);">
                             <span class="material-icons">add_circle</span>
@@ -1364,6 +1371,9 @@
                     document.getElementById('yaml-content').value = yamlData.yaml;
                     currentYaml = yamlData;
                     addLog(deviceName, 'info', 'Configuration loaded');
+                    
+                    // Show upload button
+                    document.getElementById('yaml-upload-btn').style.display = 'inline-flex';
                 } else {
                     alert('Failed to load configuration: ' + (yamlData.error || 'Unknown error'));
                     return;
@@ -1415,6 +1425,33 @@
                 alert('Failed to load configuration');
             }
         }
+        
+        // Upload from YAML editor
+        function uploadFromYaml() {
+            const deviceName = document.getElementById('yaml-device-select').value;
+            if (!deviceName) {
+                showToast('warning', 'No Device', 'Please select a device first');
+                return;
+            }
+            
+            // Show upload modal
+            showUploadModal(deviceName);
+        }
+        
+        // Device select change handler - show upload button
+        document.addEventListener('DOMContentLoaded', function() {
+            const deviceSelect = document.getElementById('yaml-device-select');
+            if (deviceSelect) {
+                deviceSelect.addEventListener('change', function() {
+                    const uploadBtn = document.getElementById('yaml-upload-btn');
+                    if (this.value) {
+                        uploadBtn.style.display = 'inline-flex';
+                    } else {
+                        uploadBtn.style.display = 'none';
+                    }
+                });
+            }
+        });
         
         // Parse YAML for components
         function parseYamlComponents(yaml) {
