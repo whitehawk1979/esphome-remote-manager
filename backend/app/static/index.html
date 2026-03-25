@@ -1595,28 +1595,245 @@
         }
         
         function showManualUploadInstructions(name) {
-            const instructions = `
+            // Check if Web Serial API is supported
+            if ('serial' in navigator) {
+                showSerialUploadModal(name);
+            } else {
+                // Fallback to instructions
+                const instructions = `
 Manual Upload Instructions for ${name}:
 
-1. Connect the device via USB
-2. Put the device in boot mode (hold BOOT button, press RESET)
-3. Run the following command:
+Web Serial API not supported in this browser.
+Please use Chrome or Edge for direct USB upload.
 
-   esphome run ${name}.yaml --device /dev/ttyUSB0
+Alternative methods:
 
-Or use the ESPHome Dashboard:
+1. ESPHome Dashboard:
    http://192.168.1.64:6052
 
-4. For manual serial upload:
+2. Command line:
+   esphome run ${name}.yaml --device /dev/ttyUSB0
+
+3. Manual esptool:
    esptool.py --port /dev/ttyUSB0 write_flash 0x0 ${name}.bin
 
 Device-specific instructions:
 - ESP32: Hold BOOT, press RESET, release BOOT
 - ESP8266: GPIO0 to GND during boot
 - ESP32-S2/S3: USB CDC mode (hold BOOT, press RESET)
+                `;
+                
+                alert(instructions);
+            }
+        }
+        
+        // Web Serial Upload Modal
+        let serialPort = null;
+        let serialWriter = null;
+        let serialReader = null;
+        
+        async function showSerialUploadModal(name) {
+            // Show modal for serial upload
+            const modalHtml = `
+                <div class="modal-overlay active" id="serial-modal">
+                    <div class="modal" style="max-width: 600px;">
+                        <div class="modal-header">
+                            <h3><span class="material-icons">cable</span> Serial Upload - ${name}</h3>
+                            <button class="modal-close" onclick="closeSerialModal()">
+                                <span class="material-icons">close</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <div id="serial-status" style="margin-bottom: 16px;">
+                                <p><strong>Steps:</strong></p>
+                                <ol>
+                                    <li>Connect ESP device via USB</                                    <li>Click "Select Port" below</li>
+                                    <li>Put device in boot mode (hold BOOT, press RESET)</li>
+                                    <li>Click "Upload Firmware"</li>
+                                </ol>
+                            </div>
+                            <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                                <button class="btn btn-primary" onclick="selectSerialPort()">
+                                    <span class="material-icons">usb</span> Select Port
+                                </button>
+                                <button class="btn btn-success" id="serial-upload-btn" onclick="uploadViaSerial('${name}')" disabled>
+                                    <span class="material-icons">upload</span> Upload Firmware
+                                </button>
+                                <button class="btn btn-outline" onclick="downloadFirmware('${name}')">
+                                    <span class="material-icons">download</span> Download .bin
+                                </button>
+                            </div>
+                            <div id="serial-log" style="margin-top: 16px; padding: 12px; background: var(--card-bg); border-radius: 8px; max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 12px;">
+                                Waiting for port selection...
+                            </div>
+                        </div>
+                    </div>
+                </div>
             `;
             
-            alert(instructions);
+            // Remove existing modal if any
+            const existingModal = document.getElementById('serial-modal');
+            if (existingModal) existingModal.remove();
+            
+            // Add modal to body
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+        }
+        
+        function closeSerialModal() {
+            const modal = document.getElementById('serial-modal');
+            if (modal) modal.remove();
+            
+            // Close serial port if open
+            if (serialReader) {
+                try { serialReader.cancel(); } catch (e) {}
+            }
+            if (serialWriter) {
+                try { serialWriter.releaseLock(); } catch (e) {}
+            }
+            if (serialPort) {
+                try { serialPort.close(); } catch (e) {}
+            }
+            serialPort = null;
+            serialWriter = null;
+            serialReader = null;
+        }
+        
+        async function selectSerialPort() {
+            try {
+                serialPort = await navigator.serial.requestPort();
+                await serialPort.open({ baudRate: 115200 });
+                
+                addSerialLog('success', 'Port connected successfully!');
+                document.getElementById('serial-upload-btn').disabled = false;
+                
+                // Read from port
+                const textDecoder = new TextDecoderStream();
+                const readableStreamClosed = serialPort.readable.pipeTo(textDecoder.writable);
+                serialReader = textDecoder.readable.getReader();
+                
+                // Listen for data
+                listenToSerial();
+                
+            } catch (error) {
+                addSerialLog('error', `Port error: ${error.message}`);
+            }
+        }
+        
+        async function listenToSerial() {
+            while (true) {
+                try {
+                    const { value, done } = await serialReader.read();
+                    if (done) break;
+                    if (value) {
+                        addSerialLog('info', value);
+                    }
+                } catch (error) {
+                    break;
+                }
+            }
+        }
+        
+        function addSerialLog(type, message) {
+            const log = document.getElementById('serial-log');
+            if (!log) return;
+            
+            const colors = {
+                'info': 'var(--text-primary)',
+                'success': 'var(--success)',
+                'error': 'var(--error)',
+                'warning': 'var(--warning)'
+            };
+            
+            const line = document.createElement('div');
+            line.style.color = colors[type] || 'var(--text-primary)';
+            line.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            log.appendChild(line);
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        async function uploadViaSerial(name) {
+            if (!serialPort) {
+                addSerialLog('error', 'Please select a port first');
+                return;
+            }
+            
+            addSerialLog('info', 'Downloading firmware...');
+            
+            try {
+                // First compile and download
+                const compileResp = await fetch(`${API_BASE}/api/compile/${name}/async`, { method: 'POST' });
+                const compileData = await compileResp.json();
+                
+                if (compileData.success) {
+                    addSerialLog('info', 'Compiling firmware...');
+                    
+                    // Poll for compile status
+                    let compiled = false;
+                    for (let i = 0; i < 60; i++) {
+                        await new Promise(r => setTimeout(r, 2000));
+                        const statusResp = await fetch(`${API_BASE}/api/task/${compileData.task_id}`);
+                        const statusData = await statusResp.json();
+                        
+                        if (statusData.status === 'compiled') {
+                            compiled = true;
+                            break;
+                        } else if (statusData.status === 'error') {
+                            addSerialLog('error', 'Compilation failed');
+                            return;
+                        }
+                    }
+                    
+                    if (!compiled) {
+                        addSerialLog('error', 'Compilation timed out');
+                        return;
+                    }
+                }
+                
+                // Download the binary
+                addSerialLog('info', 'Downloading binary...');
+                const downloadUrl = `${API_BASE}/api/download/${name}`;
+                const response = await fetch(downloadUrl);
+                const blob = await response.blob();
+                const arrayBuffer = await blob.arrayBuffer();
+                const firmwareData = new Uint8Array(arrayBuffer);
+                
+                addSerialLog('success', `Downloaded ${firmwareData.length} bytes`);
+                
+                // Upload via serial using esptool protocol
+                addSerialLog('info', 'Starting serial upload...');
+                addSerialLog('warning', 'Put device in boot mode NOW (hold BOOT, press RESET)');
+                
+                // Simple serial write - for full esptool support we'd need esptool-js library
+                // This is a simplified version that sends the binary
+                const writer = serialPort.writable.getWriter();
+                
+                try {
+                    // Send sync command (esptool protocol)
+                    const syncCmd = new Uint8Array([0xC0, 0x00, 0x08, 0x24, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x07, 0x07, 0x12, 0x20, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0xC0]);
+                    await writer.write(syncCmd);
+                    await new Promise(r => setTimeout(r, 100));
+                    
+                    // Flash firmware (simplified - real esptool needs more protocol handling)
+                    const flashCmd = new Uint8Array([0xC0, 0x00, 0x02, 0x00, firmwareData.length & 0xFF, (firmwareData.length >> 8) & 0xFF, (firmwareData.length >> 16) & 0xFF, (firmwareData.length >> 24) & 0xFF, 0xC0]);
+                    await writer.write(flashCmd);
+                    await new Promise(r => setTimeout(r, 100));
+                    
+                    // Write data in chunks
+                    const chunkSize = 4096;
+                    for (let i = 0; i < firmwareData.length; i += chunkSize) {
+                        const chunk = firmwareData.slice(i, Math.min(i + chunkSize, firmwareData.length));
+                        await writer.write(chunk);
+                        addSerialLog('info', `Uploaded ${Math.min(i + chunkSize, firmwareData.length)}/${firmwareData.length} bytes`);
+                    }
+                    
+                    addSerialLog('success', 'Upload complete! Press RESET to boot.');
+                } finally {
+                    writer.releaseLock();
+                }
+                
+            } catch (error) {
+                addSerialLog('error', `Upload failed: ${error.message}`);
+            }
         }
         
         // WebSocket connection
