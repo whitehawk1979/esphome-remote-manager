@@ -778,6 +778,47 @@
             </div>
         </div>
         
+        <!-- Upload Modal -->
+        <div class="modal-overlay" id="upload-modal">
+            <div class="modal" style="max-width: 500px;">
+                <div class="modal-header">
+                    <h3><span class="material-icons">system_update</span> <span id="upload-device-name">Device</span> - Upload Type</h3>
+                    <button class="modal-close" onclick="closeUploadModal()">
+                        <span class="material-icons">close</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p style="margin-bottom: 16px; color: var(--text-secondary);">Choose how to upload the firmware:</p>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <button class="btn btn-success" style="justify-content: flex-start; padding: 16px;" onclick="startUpload('ota')">
+                            <span class="material-icons" style="font-size: 24px; margin-right: 12px;">wifi</span>
+                            <div style="text-align: left;">
+                                <div style="font-weight: 500;">OTA Update</div>
+                                <div style="font-size: 12px; color: var(--text-secondary);">Upload wirelessly via WiFi (recommended)</div>
+                            </div>
+                        </button>
+                        
+                        <button class="btn btn-primary" style="justify-content: flex-start; padding: 16px;" onclick="startUpload('download')">
+                            <span class="material-icons" style="font-size: 24px; margin-right: 12px;">download</span>
+                            <div style="text-align: left;">
+                                <div style="font-weight: 500;">Download Firmware</div>
+                                <div style="font-size: 12px; color: var(--text-secondary);">Download .bin file for manual upload</div>
+                            </div>
+                        </button>
+                        
+                        <button class="btn btn-outline" style="justify-content: flex-start; padding: 16px;" onclick="startUpload('manual')">
+                            <span class="material-icons" style="font-size: 24px; margin-right: 12px;">cable</span>
+                            <div style="text-align: left;">
+                                <div style="font-weight: 500;">Manual Upload</div>
+                                <div style="font-size: 12px; color: var(--text-secondary);">Show instructions for serial upload</div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         <!-- Logs Tab -->
         <div class="tab-content" id="logs-tab">
             <div class="card">
@@ -1052,9 +1093,13 @@
                                 <span class="material-icons">build</span>
                                 Compile
                             </button>
-                            <button class="btn btn-success" onclick="event.stopPropagation(); updateDevice('${device.name}')">
+                            <button class="btn btn-success" onclick="event.stopPropagation(); showUploadModal('${device.name}')">
                                 <span class="material-icons">system_update</span>
                                 Update
+                            </button>
+                            <button class="btn btn-outline" onclick="event.stopPropagation(); downloadFirmware('${device.name}')">
+                                <span class="material-icons">download</span>
+                                Download
                             </button>
                             <button class="btn btn-outline" onclick="event.stopPropagation(); showYaml('${device.name}')">
                                 <span class="material-icons">code</span>
@@ -1278,6 +1323,108 @@
                 console.error('Failed to save YAML:', e);
                 alert('Failed to save configuration');
             }
+        }
+        
+        // Upload Modal Functions
+        let currentUploadDevice = null;
+        
+        function showUploadModal(name) {
+            currentUploadDevice = name;
+            document.getElementById('upload-device-name').textContent = name;
+            document.getElementById('upload-modal').classList.add('active');
+        }
+        
+        function closeUploadModal() {
+            document.getElementById('upload-modal').classList.remove('active');
+            currentUploadDevice = null;
+        }
+        
+        async function startUpload(type) {
+            if (!currentUploadDevice) return;
+            
+            closeUploadModal();
+            
+            if (type === 'ota') {
+                // OTA upload - same as updateDevice
+                await updateDevice(currentUploadDevice);
+            } else if (type === 'download') {
+                // Download firmware
+                await downloadFirmware(currentUploadDevice);
+            } else if (type === 'manual') {
+                // Show manual upload instructions
+                showManualUploadInstructions(currentUploadDevice);
+            }
+        }
+        
+        async function downloadFirmware(name) {
+            showToast('info', 'Downloading', `Downloading firmware for ${name}...`);
+            
+            try {
+                // First compile if needed
+                const compileResp = await fetch(`${API_BASE}/api/compile/${name}/async`, { method: 'POST' });
+                const compileData = await compileResp.json();
+                
+                if (compileData.success) {
+                    showToast('info', 'Compiling', `Compiling ${name} before download...`);
+                    
+                    // Wait for compile to finish (poll)
+                    let compiled = false;
+                    for (let i = 0; i < 60; i++) {
+                        await new Promise(r => setTimeout(r, 2000));
+                        const statusResp = await fetch(`${API_BASE}/api/task/${compileData.task_id}`);
+                        const statusData = await statusResp.json();
+                        
+                        if (statusData.status === 'compiled') {
+                            compiled = true;
+                            break;
+                        } else if (statusData.status === 'error') {
+                            showToast('error', 'Compile Failed', statusData.result || 'Unknown error');
+                            return;
+                        }
+                    }
+                    
+                    if (!compiled) {
+                        showToast('error', 'Timeout', 'Compilation timed out');
+                        return;
+                    }
+                }
+                
+                // Download the firmware
+                const downloadUrl = `${API_BASE}/api/download/${name}`;
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = `${name}.bin`;
+                a.click();
+                
+                showToast('success', 'Download Started', `Downloading ${name}.bin`);
+            } catch (e) {
+                showToast('error', 'Error', e.message);
+            }
+        }
+        
+        function showManualUploadInstructions(name) {
+            const instructions = `
+Manual Upload Instructions for ${name}:
+
+1. Connect the device via USB
+2. Put the device in boot mode (hold BOOT button, press RESET)
+3. Run the following command:
+
+   esphome run ${name}.yaml --device /dev/ttyUSB0
+
+Or use the ESPHome Dashboard:
+   http://192.168.1.64:6052
+
+4. For manual serial upload:
+   esptool.py --port /dev/ttyUSB0 write_flash 0x0 ${name}.bin
+
+Device-specific instructions:
+- ESP32: Hold BOOT, press RESET, release BOOT
+- ESP8266: GPIO0 to GND during boot
+- ESP32-S2/S3: USB CDC mode (hold BOOT, press RESET)
+            `;
+            
+            alert(instructions);
         }
         
         // WebSocket connection
