@@ -423,13 +423,23 @@ async def compile_device(device_name: str, background_tasks: BackgroundTasks):
     try:
         import subprocess
         
+        # Get device configuration filename
+        devices = await get_devices_from_dashboard()
+        yaml_file = f"{device_name}.yaml"
+        for device in devices:
+            if device["name"] == device_name:
+                yaml_file = device.get("configuration", f"{device_name}.yaml")
+                break
+        
+        logger.info(f"Compiling {device_name} using {yaml_file}")
+        
         # Trigger compile in background (ESPHome compile can take minutes)
         def run_compile():
             try:
                 logger.info(f"Starting compile for {device_name}")
                 # Run esphome compile in the ESPHome container
                 result = subprocess.run(
-                    ["docker", "exec", "esphome", "esphome", "compile", f"{device_name}.yaml"],
+                    ["docker", "exec", "esphome", "esphome", "compile", yaml_file],
                     capture_output=True,
                     text=True,
                     timeout=300  # 5 minutes timeout
@@ -450,6 +460,7 @@ async def compile_device(device_name: str, background_tasks: BackgroundTasks):
         return {
             "success": True,
             "device": device_name,
+            "yaml_file": yaml_file,
             "message": "Compile started",
             "status": "compiling"
         }
@@ -464,12 +475,22 @@ async def update_device(device_name: str, background_tasks: BackgroundTasks):
     try:
         import subprocess
         
+        # Get device configuration filename
+        devices = await get_devices_from_dashboard()
+        yaml_file = f"{device_name}.yaml"
+        for device in devices:
+            if device["name"] == device_name:
+                yaml_file = device.get("configuration", f"{device_name}.yaml")
+                break
+        
+        logger.info(f"Updating {device_name} using {yaml_file}")
+        
         def run_upload():
             try:
                 logger.info(f"Starting update for {device_name}")
                 # Run esphome upload in the ESPHome container
                 result = subprocess.run(
-                    ["docker", "exec", "esphome", "esphome", "upload", f"{device_name}.yaml"],
+                    ["docker", "exec", "esphome", "esphome", "upload", yaml_file],
                     capture_output=True,
                     text=True,
                     timeout=300  # 5 minutes timeout
@@ -490,6 +511,7 @@ async def update_device(device_name: str, background_tasks: BackgroundTasks):
         return {
             "success": True,
             "device": device_name,
+            "yaml_file": yaml_file,
             "message": "Update started",
             "status": "updating"
         }

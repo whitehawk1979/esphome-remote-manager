@@ -1296,16 +1296,35 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    updateProgress(30, 'Compile request sent...');
-                    addLog(name, 'info', data.message);
-                    pollStatus(name, 'compile');
+                    updateProgress(50, 'Compile started in ESPHome...');
+                    addProgressLog('info', 'Compilation started in background');
+                    addLog(name, 'info', 'Compilation started - check ESPHome Dashboard for progress');
+                    
+                    // Simulate progress and close
+                    let progress = 50;
+                    const progressInterval = setInterval(() => {
+                        progress = Math.min(progress + 5, 90);
+                        updateProgress(progress, 'Compiling...');
+                    }, 1000);
+                    
+                    setTimeout(() => {
+                        clearInterval(progressInterval);
+                        updateProgress(100, 'Compile started');
+                        addProgressLog('success', 'Compile started - check ESPHome Dashboard for details');
+                        setTimeout(() => {
+                            hideProgressModal();
+                            fetchDevices();
+                        }, 2000);
+                    }, 5000);
                 } else {
                     hideProgressModal();
-                    addLog(name, 'error', data.message || 'Compilation failed');
+                    addLog(name, 'error', data.error || 'Compilation failed');
+                    showToast('error', 'Compilation Failed', data.error || 'Unknown error');
                 }
             } catch (e) {
                 hideProgressModal();
                 addLog(name, 'error', `Error: ${e.message}`);
+                showToast('error', 'Error', e.message);
             }
         }
         
@@ -1325,16 +1344,35 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    updateProgress(30, 'Update request sent...');
-                    addLog(name, 'info', data.message);
-                    pollStatus(name, 'update');
+                    updateProgress(50, 'Update started in ESPHome...');
+                    addProgressLog('info', 'Update started in background');
+                    addLog(name, 'info', 'Update started - check ESPHome Dashboard for progress');
+                    
+                    // Simulate progress and close
+                    let progress = 50;
+                    const progressInterval = setInterval(() => {
+                        progress = Math.min(progress + 3, 85);
+                        updateProgress(progress, 'Updating...');
+                    }, 1000);
+                    
+                    setTimeout(() => {
+                        clearInterval(progressInterval);
+                        updateProgress(100, 'Update started');
+                        addProgressLog('success', 'Update started - check ESPHome Dashboard for details');
+                        setTimeout(() => {
+                            hideProgressModal();
+                            fetchDevices();
+                        }, 2000);
+                    }, 8000);
                 } else {
                     hideProgressModal();
-                    addLog(name, 'error', data.message || 'Update failed');
+                    addLog(name, 'error', data.error || 'Update failed');
+                    showToast('error', 'Update Failed', data.error || 'Unknown error');
                 }
             } catch (e) {
                 hideProgressModal();
                 addLog(name, 'error', `Error: ${e.message}`);
+                showToast('error', 'Error', e.message);
             }
         }
         
