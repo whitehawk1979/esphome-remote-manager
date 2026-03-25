@@ -807,22 +807,57 @@
         
         <!-- Template Insert Modal -->
         <div class="modal-overlay" id="template-modal">
-            <div class="modal" style="max-width: 600px;">
+            <div class="modal" style="max-width: 800px;">
                 <div class="modal-header">
-                    <h3 id="template-modal-title"><span class="material-icons">description</span> Insert Template</h3>
+                    <h3><span class="material-icons">description</span> Insert Template</h3>
                     <button class="modal-close" onclick="closeTemplateModal()">
                         <span class="material-icons">close</span>
                     </button>
                 </div>
                 <div class="modal-body">
-                    <pre id="template-content" style="background: var(--code-bg); color: #d4d4d4; padding: 16px; border-radius: 8px; overflow-x: auto; font-size: 13px;"></pre>
+                    <!-- Template Categories -->
+                    <div style="display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;">
+                        <button class="btn btn-outline btn-sm" onclick="filterTemplates('all')">All</button>
+                        <button class="btn btn-outline btn-sm" onclick="filterTemplates('sensor')">Sensors</button>
+                        <button class="btn btn-outline btn-sm" onclick="filterTemplates('binary_sensor')">Binary</button>
+                        <button class="btn btn-outline btn-sm" onclick="filterTemplates('switch')">Switches</button>
+                        <button class="btn btn-outline btn-sm" onclick="filterTemplates('light')">Lights</button>
+                        <button class="btn btn-outline btn-sm" onclick="filterTemplates('output')">Outputs</button>
+                        <button class="btn btn-outline btn-sm" onclick="filterTemplates('display')">Displays</button>
+                        <button class="btn btn-outline btn-sm" onclick="filterTemplates('network')">Network</button>
+                    </div>
+                    
+                    <!-- Template Selector -->
+                    <div style="margin-bottom: 16px;">
+                        <label style="display: block; margin-bottom: 4px; font-weight: 500;">Select Template</label>
+                        <select id="template-selector" style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px;" onchange="loadTemplateParams()">
+                            <option value="">Choose a template...</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Template Parameters -->
+                    <div id="template-params" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                        <!-- Dynamic parameters will be inserted here -->
+                    </div>
+                    
+                    <!-- Preview -->
+                    <div>
+                        <label style="display: block; margin-bottom: 4px; font-weight: 500;">Preview</label>
+                        <pre id="template-content" style="background: var(--code-bg); color: #d4d4d4; padding: 16px; border-radius: 8px; overflow-x: auto; font-size: 12px; max-height: 300px;"></pre>
+                    </div>
                 </div>
-                <div class="modal-footer" style="padding: 16px; display: flex; justify-content: flex-end; gap: 8px;">
-                    <button class="btn btn-outline" onclick="closeTemplateModal()">Cancel</button>
-                    <button class="btn btn-primary" onclick="insertSelectedTemplate()">
-                        <span class="material-icons">add</span>
-                        Insert
-                    </button>
+                <div class="modal-footer" style="padding: 16px; display: flex; justify-content: space-between;">
+                    <a href="https://esphome.io/components/index.html" target="_blank" style="color: var(--primary); text-decoration: none;">
+                        <span class="material-icons" style="font-size: 14px; vertical-align: middle;">open_in_new</span>
+                        ESPHome Components
+                    </a>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn btn-outline" onclick="closeTemplateModal()">Cancel</button>
+                        <button class="btn btn-primary" onclick="insertSelectedTemplate()">
+                            <span class="material-icons">add</span>
+                            Insert
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -2152,81 +2187,437 @@ Device-specific instructions:
             }
         }
 
-        // Template definitions
+        // Template definitions with parameters
         const TEMPLATES = {
-            sensor: {
-                name: 'Sensor',
+            // Sensors
+            'sensor.adc': {
+                name: 'ADC Sensor',
+                category: 'sensor',
+                params: [
+                    { name: 'name', label: 'Name', default: 'ADC Sensor' },
+                    { name: 'pin', label: 'GPIO Pin', default: 'GPIO34' },
+                    { name: 'update_interval', label: 'Update Interval', default: '60s' }
+                ],
                 template: `sensor:
   - platform: adc
-    pin: GPIOXX
-    name: "Sensor Name"
-    update_interval: 60s
+    pin: {{pin}}
+    name: "{{name}}"
+    update_interval: {{update_interval}}
     filters:
       - lambda: return x * 1.0;`
             },
-            binary_sensor: {
-                name: 'Binary Sensor',
+            'sensor.dallas': {
+                name: 'Dallas Temperature',
+                category: 'sensor',
+                params: [
+                    { name: 'name', label: 'Name', default: 'Temperature' },
+                    { name: 'pin', label: 'GPIO Pin', default: 'GPIO4' }
+                ],
+                template: `dallas:
+  - pin: {{pin}}
+    
+sensor:
+  - platform: dallas
+    address: 0x...
+    name: "{{name}}"`
+            },
+            'sensor.dht': {
+                name: 'DHT Temperature/Humidity',
+                category: 'sensor',
+                params: [
+                    { name: 'name', label: 'Name', default: 'DHT Sensor' },
+                    { name: 'pin', label: 'GPIO Pin', default: 'GPIO4' },
+                    { name: 'model', label: 'Model', default: 'DHT22', options: ['DHT11', 'DHT22', 'DHT12', 'AM2302'] }
+                ],
+                template: `sensor:
+  - platform: dht
+    pin: {{pin}}
+    temperature:
+      name: "{{name}} Temperature"
+    humidity:
+      name: "{{name}} Humidity"
+    model: {{model}}
+    update_interval: 60s`
+            },
+            'sensor.bme280': {
+                name: 'BME280 Environment',
+                category: 'sensor',
+                params: [
+                    { name: 'name', label: 'Name', default: 'BME280' }
+                ],
+                template: `i2c:
+  sda: GPIO21
+  scl: GPIO22
+  scan: true
+
+sensor:
+  - platform: bme280_i2c
+    temperature:
+      name: "{{name}} Temperature"
+    pressure:
+      name: "{{name}} Pressure"
+    humidity:
+      name: "{{name}} Humidity"
+    address: 0x76
+    update_interval: 60s`
+            },
+            // Binary Sensors
+            'binary_sensor.gpio': {
+                name: 'GPIO Binary Sensor',
+                category: 'binary_sensor',
+                params: [
+                    { name: 'name', label: 'Name', default: 'Button' },
+                    { name: 'pin', label: 'GPIO Pin', default: 'GPIO0' },
+                    { name: 'inverted', label: 'Inverted', default: 'false', options: ['true', 'false'] }
+                ],
                 template: `binary_sensor:
   - platform: gpio
     pin:
-      number: GPIOXX
+      number: {{pin}}
       mode:
         input: true
         pullup: true
-    name: "Binary Sensor Name"
+    name: "{{name}}"
     filters:
       - delayed_on: 10ms
       - delayed_off: 10ms`
             },
-            switch: {
-                name: 'Switch',
+            'binary_sensor.pir': {
+                name: 'PIR Motion',
+                category: 'binary_sensor',
+                params: [
+                    { name: 'name', label: 'Name', default: 'Motion' },
+                    { name: 'pin', label: 'GPIO Pin', default: 'GPIO13' }
+                ],
+                template: `binary_sensor:
+  - platform: gpio
+    pin: {{pin}}
+    name: "{{name}}"
+    device_class: motion
+    filters:
+      - delayed_off: 30s`
+            },
+            // Switches
+            'switch.gpio': {
+                name: 'GPIO Switch',
+                category: 'switch',
+                params: [
+                    { name: 'name', label: 'Name', default: 'Relay' },
+                    { name: 'pin', label: 'GPIO Pin', default: 'GPIO5' },
+                    { name: 'id', label: 'ID', default: 'relay_1' }
+                ],
                 template: `switch:
   - platform: gpio
-    pin: GPIOXX
-    name: "Switch Name"
-    id: switch_id
+    pin: {{pin}}
+    name: "{{name}}"
+    id: {{id}}
     restore_mode: ALWAYS_OFF`
             },
-            light: {
-                name: 'Light',
-                template: `light:
-  - platform: monochromatic
-    output: pwm_output
-    name: "Light Name"
-    id: light_id`
+            'switch.sonoff': {
+                name: 'Sonoff Basic',
+                category: 'switch',
+                params: [
+                    { name: 'name', label: 'Name', default: 'Switch' }
+                ],
+                template: `switch:
+  - platform: gpio
+    pin: GPIO12
+    name: "{{name}}"
+    restore_mode: ALWAYS_OFF
+
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: GPIO0
+      mode: INPUT_PULLUP
+      inverted: true
+    name: "{{name}} Button"`
             },
-            output: {
-                name: 'Output (PWM)',
+            // Lights
+            'light.monochromatic': {
+                name: 'Monochromatic Light',
+                category: 'light',
+                params: [
+                    { name: 'name', label: 'Name', default: 'Light' },
+                    { name: 'pin', label: 'GPIO Pin', default: 'GPIO5' }
+                ],
                 template: `output:
   - platform: ledc
-    pin: GPIOXX
+    pin: {{pin}}
     id: pwm_output
-    frequency: 1000 Hz
+
+light:
+  - platform: monochromatic
+    output: pwm_output
+    name: "{{name}}"`
+            },
+            'light.rgb': {
+                name: 'RGB Light',
+                category: 'light',
+                params: [
+                    { name: 'name', label: 'Name', default: 'RGB Light' },
+                    { name: 'red_pin', label: 'Red Pin', default: 'GPIO4' },
+                    { name: 'green_pin', label: 'Green Pin', default: 'GPIO12' },
+                    { name: 'blue_pin', label: 'Blue Pin', default: 'GPIO14' }
+                ],
+                template: `output:
+  - platform: ledc
+    pin: {{red_pin}}
+    id: red_output
+  - platform: ledc
+    pin: {{green_pin}}
+    id: green_output
+  - platform: ledc
+    pin: {{blue_pin}}
+    id: blue_output
+
+light:
+  - platform: rgb
+    name: "{{name}}"
+    red: red_output
+    green: green_output
+    blue: blue_output`
+            },
+            // Outputs
+            'output.ledc': {
+                name: 'LEDC PWM Output',
+                category: 'output',
+                params: [
+                    { name: 'pin', label: 'GPIO Pin', default: 'GPIO5' },
+                    { name: 'frequency', label: 'Frequency', default: '1000 Hz' }
+                ],
+                template: `output:
+  - platform: ledc
+    pin: {{pin}}
+    id: pwm_output
+    frequency: {{frequency}}
     min_power: 0.0
     max_power: 1.0`
             },
-            i2c: {
-                name: 'I²C Bus',
+            // Displays
+            'display.ssd1306': {
+                name: 'SSD1306 OLED',
+                category: 'display',
+                params: [
+                    { name: 'width', label: 'Width', default: '128' },
+                    { name: 'height', label: 'Height', default: '64' }
+                ],
                 template: `i2c:
-  sda: GPIOXX
-  scl: GPIOXX
+  sda: GPIO21
+  scl: GPIO22
   scan: true
-  id: i2c_bus`
+
+display:
+  - platform: ssd1306_i2c
+    model: "SSD1306 {{width}}x{{height}}"
+    address: 0x3C
+    lambda: |-
+      it.print(0, 0, id(font), "Hello World!");`
             },
-            spi: {
-                name: 'SPI Bus',
+            'display.st7789': {
+                name: 'ST7789 TFT',
+                category: 'display',
+                params: [
+                    { name: 'width', label: 'Width', default: '240' },
+                    { name: 'height', label: 'Height', default: '320' }
+                ],
                 template: `spi:
-  mosi_pin: GPIOXX
-  miso_pin: GPIOXX
-  clk_pin: GPIOXX
-  id: spi_bus`
+  mosi_pin: GPIO23
+  clk_pin: GPIO18
+
+display:
+  - platform: st7789
+    model: {{width}}x{{height}}
+    cs_pin: GPIO5
+    dc_pin: GPIO27
+    reset_pin: GPIO33
+    lambda: |-
+      it.print(0, 0, id(font), "Hello World!");`
             },
-            uart: {
-                name: 'UART',
-                template: `uart:
-  tx_pin: GPIOXX
-  rx_pin: GPIOXX
-  baud_rate: 9600
+            // Network
+            'network.wifi': {
+                name: 'WiFi Config',
+                category: 'network',
+                params: [
+                    { name: 'ssid', label: 'SSID', default: 'MyWiFi' },
+                    { name: 'password', label: 'Password', default: 'password123' }
+                ],
+                template: `wifi:
+  ssid: "{{ssid}}"
+  password: "{{password}}"
+  
+  # Enable fallback hotspot (captive portal)
+  ap:
+    ssid: "ESPHome Fallback"
+    password: "fallback123"`
+            },
+            'network.mqtt': {
+                name: 'MQTT Config',
+                category: 'network',
+                params: [
+                    { name: 'broker', label: 'Broker', default: '192.168.1.43' },
+                    { name: 'user', label: 'Username', default: 'mqtt' },
+                    { name: 'password', label: 'Password', default: 'password' }
+                ],
+                template: `mqtt:
+  broker: {{broker}}
+  username: {{user}}
+  password: "{{password}}"`
+            },
+            'network.api': {
+                name: 'API & OTA',
+                category: 'network',
+                params: [
+                    { name: 'api_password', label: 'API Password', default: 'password123' },
+                    { name: 'ota_password', label: 'OTA Password', default: 'password123' }
+                ],
+                template: `# Enable API for Home Assistant
+api:
+  password: "{{api_password}}"
+
+# Enable OTA updates
+ota:
+  password: "{{ota_password}}"`
+            }
+        };
+        
+        // Current template
+        let currentTemplate = null;
+        
+        // Filter templates by category
+        function filterTemplates(category) {
+            const selector = document.getElementById('template-selector');
+            selector.innerHTML = '<option value="">Choose a template...</option>';
+            
+            for (const [key, template] of Object.entries(TEMPLATES)) {
+                if (category === 'all' || template.category === category) {
+                    const option = document.createElement('option');
+                    option.value = key;
+                    option.textContent = template.name;
+                    selector.appendChild(option);
+                }
+            }
+            
+            // Update category buttons
+            document.querySelectorAll('.modal-body .btn-outline').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.textContent.toLowerCase().includes(category) || (category === 'all' && btn.textContent === 'All')) {
+                    btn.classList.add('active');
+                }
+            });
+        }
+        
+        // Load template parameters
+        function loadTemplateParams() {
+            const key = document.getElementById('template-selector').value;
+            const paramsContainer = document.getElementById('template-params');
+            const previewContainer = document.getElementById('template-content');
+            
+            if (!key || !TEMPLATES[key]) {
+                paramsContainer.innerHTML = '';
+                previewContainer.textContent = '';
+                currentTemplate = null;
+                return;
+            }
+            
+            currentTemplate = TEMPLATES[key];
+            
+            // Build parameter inputs
+            let paramsHtml = '';
+            for (const param of currentTemplate.params) {
+                paramsHtml += `
+                    <div>
+                        <label style="display: block; margin-bottom: 4px; font-size: 12px;">${param.label}</label>
+                        ${param.options ? 
+                            `<select id="param_${param.name}" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px;" onchange="updateTemplatePreview()">
+                                ${param.options.map(opt => `<option value="${opt}" ${opt === param.default ? 'selected' : ''}>${opt}</option>`).join('')}
+                            </select>` :
+                            `<input type="text" id="param_${param.name}" value="${param.default}" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px;" onchange="updateTemplatePreview()" oninput="updateTemplatePreview()">`
+                        }
+                    </div>
+                `;
+            }
+            paramsContainer.innerHTML = paramsHtml;
+            
+            updateTemplatePreview();
+        }
+        
+        // Update template preview
+        function updateTemplatePreview() {
+            if (!currentTemplate) return;
+            
+            let template = currentTemplate.template;
+            
+            // Replace parameters
+            for (const param of currentTemplate.params) {
+                const input = document.getElementById(`param_${param.name}`);
+                if (input) {
+                    template = template.replace(new RegExp(`{{${param.name}}}`, 'g'), input.value);
+                }
+            }
+            
+            document.getElementById('template-content').textContent = template;
+        }
+        
+        // Insert selected template
+        function insertSelectedTemplate() {
+            const content = document.getElementById('template-content').textContent;
+            const yamlEditor = document.getElementById('yaml-content');
+            
+            // Insert at cursor position
+            const start = yamlEditor.selectionStart;
+            const end = yamlEditor.selectionEnd;
+            const text = yamlEditor.value;
+            
+            yamlEditor.value = text.substring(0, start) + '\n' + content + '\n' + text.substring(end);
+            yamlEditor.focus();
+            yamlEditor.setSelectionRange(start + content.length + 2, start + content.length + 2);
+            
+            closeTemplateModal();
+        }
+        
+        // Close template modal
+        function closeTemplateModal() {
+            document.getElementById('template-modal').classList.remove('active');
+        }
+        
+        // Show template modal (called from sidebar)
+        function showTemplateModal(category = 'all') {
+            document.getElementById('template-modal').classList.add('active');
+            filterTemplates(category);
+        }
+        
+        // Initialize templates sidebar
+        function initTemplatesSidebar() {
+            const sidebar = document.getElementById('templates-list');
+            if (!sidebar) return;
+            
+            // Group by category
+            const categories = {
+                'sensor': 'Sensors',
+                'binary_sensor': 'Binary Sensors',
+                'switch': 'Switches',
+                'light': 'Lights',
+                'output': 'Outputs',
+                'display': 'Displays',
+                'network': 'Network'
+            };
+            
+            let html = '';
+            for (const [cat, catName] of Object.entries(categories)) {
+                html += `<div style="margin-top: 12px;"><strong style="font-size: 12px; color: var(--text-secondary);">${catName}</strong></div>`;
+                for (const [key, template] of Object.entries(TEMPLATES)) {
+                    if (template.category === cat) {
+                        html += `<button class="btn btn-outline" style="width: 100%; margin-top: 4px; text-align: left; font-size: 12px;" onclick="showTemplateModal('${cat}'); setTimeout(() => { document.getElementById('template-selector').value='${key}'; loadTemplateParams(); }, 100);">${template.name}</button>`;
+                    }
+                }
+            }
+            
+            sidebar.innerHTML = html;
+        }
+        
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', initTemplatesSidebar);
   id: uart_bus`
             },
             modbus: {
