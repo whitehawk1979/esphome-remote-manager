@@ -682,6 +682,10 @@
                             <span class="material-icons">add_circle</span>
                             New Device
                         </button>
+                        <button class="btn btn-warning" onclick="showSecretsModal()" title="View/Edit secrets.yaml">
+                            <span class="material-icons">key</span>
+                            Secrets
+                        </button>
                     </div>
                 </div>
                 <div class="card-body">
@@ -808,6 +812,59 @@
                         <span class="material-icons">add</span>
                         Create
                     </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Secrets Modal -->
+        <div class="modal-overlay" id="secrets-modal">
+            <div class="modal" style="max-width: 700px;">
+                <div class="modal-header">
+                    <h3><span class="material-icons">key</span> Secrets (secrets.yaml)</h3>
+                    <button class="modal-close" onclick="closeSecretsModal()">
+                        <span class="material-icons">close</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div style="margin-bottom: 12px; padding: 12px; background: var(--card-bg); border-radius: 8px;">
+                        <p style="font-size: 13px; color: var(--text-secondary); margin: 0;">
+                            <strong>Usage:</strong> Use <code style="background: var(--primary-dark); padding: 2px 6px; border-radius: 4px;">${secret_name}</code> in YAML to reference secrets.
+                            <br>Example: <code style="background: var(--primary-dark); padding: 2px 6px; border-radius: 4px;">wifi_ssid: ${wifi_ssid}</code>
+                        </p>
+                    </div>
+                    <div style="display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;">
+                        <button class="btn btn-outline btn-sm" onclick="loadSecrets()">
+                            <span class="material-icons" style="font-size: 16px;">refresh</span>
+                            Reload
+                        </button>
+                        <button class="btn btn-primary btn-sm" onclick="saveSecrets()">
+                            <span class="material-icons" style="font-size: 16px;">save</span>
+                            Save Secrets
+                        </button>
+                        <button class="btn btn-success btn-sm" onclick="insertSecretIntoYaml()">
+                            <span class="material-icons" style="font-size: 16px;">add</span>
+                            Insert Selected
+                        </button>
+                    </div>
+                    <div style="margin-bottom: 12px;">
+                        <label style="display: block; margin-bottom: 4px; font-weight: 500;">Secret Keys:</label>
+                        <select id="secret-keys" style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px;" onchange="updateSecretPreview()">
+                            <option value="">Select a secret key...</option>
+                        </select>
+                    </div>
+                    <div style="margin-bottom: 12px;">
+                        <label style="display: block; margin-bottom: 4px; font-weight: 500;">secrets.yaml content:</label>
+                        <textarea id="secrets-content" style="width: 100%; height: 300px; font-family: 'Fira Code', 'Consolas', monospace; font-size: 13px; padding: 12px; border: 1px solid var(--border); border-radius: 6px; resize: vertical;" placeholder="# WiFi credentials
+wifi_ssid: MyWiFi
+wifi_password: mypassword
+
+# API password
+api_password: myapipassword
+
+# OTA password
+ota_password: myotapassword"></textarea>
+                    </div>
+                    <div id="secrets-status" style="font-size: 12px; color: var(--text-secondary);"></div>
                 </div>
             </div>
         </div>
@@ -3830,6 +3887,120 @@ display:
 
         function closeNewDeviceModal() {
             document.getElementById('new-device-modal').classList.remove('active');
+        }
+
+        // Secrets Modal Functions
+        function showSecretsModal() {
+            document.getElementById('secrets-modal').classList.add('active');
+            loadSecrets();
+        }
+
+        function closeSecretsModal() {
+            document.getElementById('secrets-modal').classList.remove('active');
+        }
+
+        async function loadSecrets() {
+            const statusEl = document.getElementById('secrets-status');
+            statusEl.innerHTML = '<span style="color: var(--warning);">Loading secrets...</span>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/secrets`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('secrets-content').value = data.content || '';
+                    await loadSecretKeys();
+                    statusEl.innerHTML = '<span style="color: var(--success);">Secrets loaded ✓</span>';
+                } else {
+                    statusEl.innerHTML = `<span style="color: var(--error);">Error: ${data.error}</span>`;
+                }
+            } catch (e) {
+                statusEl.innerHTML = `<span style="color: var(--error);">Failed to load: ${e.message}</span>`;
+            }
+        }
+
+        async function loadSecretKeys() {
+            try {
+                const response = await fetch(`${API_BASE}/api/secrets/keys`);
+                const data = await response.json();
+                
+                const select = document.getElementById('secret-keys');
+                select.innerHTML = '<option value="">Select a secret key...</option>';
+                
+                if (data.success && data.keys) {
+                    for (const key of data.keys) {
+                        const option = document.createElement('option');
+                        option.value = key;
+                        option.textContent = key;
+                        select.appendChild(option);
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to load secret keys:', e);
+            }
+        }
+
+        function updateSecretPreview() {
+            const select = document.getElementById('secret-keys');
+            const key = select.value;
+            
+            if (key) {
+                // Show usage example
+                const statusEl = document.getElementById('secrets-status');
+                statusEl.innerHTML = `<span style="color: var(--primary);">Insert: \${${key}}</span>`;
+            }
+        }
+
+        async function saveSecrets() {
+            const content = document.getElementById('secrets-content').value;
+            const statusEl = document.getElementById('secrets-status');
+            statusEl.innerHTML = '<span style="color: var(--warning);">Saving secrets...</span>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/secrets`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content })
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    statusEl.innerHTML = '<span style="color: var(--success);">Secrets saved ✓</span>';
+                    await loadSecretKeys();
+                    showToast('success', 'Secrets Saved', 'secrets.yaml has been updated');
+                } else {
+                    statusEl.innerHTML = `<span style="color: var(--error);">Error: ${data.error}</span>`;
+                }
+            } catch (e) {
+                statusEl.innerHTML = `<span style="color: var(--error);">Failed to save: ${e.message}</span>`;
+            }
+        }
+
+        function insertSecretIntoYaml() {
+            const select = document.getElementById('secret-keys');
+            const key = select.value;
+            
+            if (!key) {
+                showToast('warning', 'No Key Selected', 'Please select a secret key first');
+                return;
+            }
+            
+            // Insert at cursor position in YAML editor
+            const yamlEditor = document.getElementById('yaml-content');
+            const secretRef = `\${${key}}`;
+            
+            if (yamlEditor.selectionStart !== undefined) {
+                const start = yamlEditor.selectionStart;
+                const end = yamlEditor.selectionEnd;
+                const text = yamlEditor.value;
+                yamlEditor.value = text.substring(0, start) + secretRef + text.substring(end);
+                yamlEditor.focus();
+                yamlEditor.setSelectionRange(start + secretRef.length, start + secretRef.length);
+            } else {
+                yamlEditor.value += secretRef;
+            }
+            
+            showToast('success', 'Inserted', `Added \${${key}} to YAML`);
         }
 
         // Create new device

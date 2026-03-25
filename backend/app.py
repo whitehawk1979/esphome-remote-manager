@@ -1006,6 +1006,104 @@ async def download_firmware(device_name: str):
         return {"success": False, "error": str(e)}
 
 
+@app.get("/api/secrets")
+async def get_secrets():
+    """Get secrets.yaml content"""
+    try:
+        secrets_path = "/opt/esphome/secrets.yaml"
+        
+        # Read from ESPHome container
+        result = subprocess.run(
+            ["docker", "exec", "esphome", "cat", secrets_path],
+            capture_output=True,
+            text=True
+        )
+        
+        if result.returncode != 0:
+            # Try alternate location
+            result = subprocess.run(
+                ["docker", "exec", "esphome", "cat", "/config/secrets.yaml"],
+                capture_output=True,
+                text=True
+            )
+        
+        if result.returncode != 0:
+            return {"success": False, "error": "secrets.yaml not found", "content": ""}
+        
+        return {"success": True, "content": result.stdout}
+    except Exception as e:
+        logger.error(f"Failed to get secrets: {e}")
+        return {"success": False, "error": str(e), "content": ""}
+
+
+@app.post("/api/secrets")
+async def save_secrets(secrets_data: dict):
+    """Save secrets.yaml content"""
+    try:
+        content = secrets_data.get("content", "")
+        
+        # Write to temp file
+        temp_path = "/tmp/secrets.yaml"
+        with open(temp_path, "w") as f:
+            f.write(content)
+        
+        # Copy to ESPHome container
+        subprocess.run(
+            ["docker", "cp", temp_path, "esphome:/opt/esphome/secrets.yaml"],
+            capture_output=True,
+            check=True
+        )
+        
+        # Also copy to alternate location
+        subprocess.run(
+            ["docker", "cp", temp_path, "esphome:/config/secrets.yaml"],
+            capture_output=True
+        )
+        
+        return {"success": True, "message": "Secrets saved successfully"}
+    except Exception as e:
+        logger.error(f"Failed to save secrets: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@app.get("/api/secrets/keys")
+async def get_secret_keys():
+    """Get list of secret keys from secrets.yaml"""
+    try:
+        secrets_path = "/opt/esphome/secrets.yaml"
+        
+        result = subprocess.run(
+            ["docker", "exec", "esphome", "cat", secrets_path],
+            capture_output=True,
+            text=True
+        )
+        
+        if result.returncode != 0:
+            result = subprocess.run(
+                ["docker", "exec", "esphome", "cat", "/config/secrets.yaml"],
+                capture_output=True,
+                text=True
+            )
+        
+        if result.returncode != 0:
+            return {"success": False, "keys": []}
+        
+        # Parse YAML keys
+        import yaml
+        try:
+            secrets = yaml.safe_load(result.stdout) or {}
+            keys = list(secrets.keys())
+            return {"success": True, "keys": keys}
+        except:
+            # Fallback: extract keys with regex
+            import re
+            keys = re.findall(r'^(\w+):', result.stdout, re.MULTILINE)
+            return {"success": True, "keys": keys}
+    except Exception as e:
+        logger.error(f"Failed to get secret keys: {e}")
+        return {"success": False, "keys": []}
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", "8000")))
