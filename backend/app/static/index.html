@@ -1280,98 +1280,170 @@
             }
         }
         
-        // Compile Device
+        // WebSocket connection
+        let ws = null;
+        let currentTaskId = null;
+        
+        function connectWebSocket() {
+            if (ws && ws.readyState === WebSocket.OPEN) return;
+            
+            const wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/logs`;
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = () => {
+                console.log('WebSocket connected');
+                addSystemLog('WebSocket connected', 'info');
+            };
+            
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'log') {
+                        addProgressLog(data.log_type || 'info', data.log);
+                        addLog(data.task_id || 'system', data.log_type || 'info', data.log);
+                    } else if (data.type === 'progress') {
+                        updateProgress(data.progress, data.message || data.status);
+                        if (data.status === 'compiled' || data.status === 'uploaded' || data.status === 'error') {
+                            setTimeout(() => {
+                                if (data.status !== 'error') {
+                                    hideProgressModal();
+                                    fetchDevices();
+                                }
+                            }, 2000);
+                        }
+                    }
+                } catch (e) {
+                    console.error('WebSocket message parse error:', e);
+                }
+            };
+            
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+            };
+            
+            ws.onclose = () => {
+                console.log('WebSocket disconnected, reconnecting in 5s...');
+                setTimeout(connectWebSocket, 5000);
+            };
+        }
+        
+        // Initialize WebSocket
+        connectWebSocket();
+        
+        // Compile Device (async with WebSocket)
         async function compileDevice(name) {
             if (!confirm(`Compile ${name}?`)) return;
             
             // Show progress modal
             showProgressModal(name, 'Compiling');
             updateProgress(0, 'Starting compilation...');
-            
-            addLog(name, 'info', 'Starting compilation...');
+            addProgressLog('info', 'Starting compile...');
             
             try {
-                updateProgress(10, 'Sending compile request...');
-                const response = await fetch(`${API_BASE}/api/compile/${name}`, { method: 'POST' });
+                // Use async API
+                const response = await fetch(`${API_BASE}/api/compile/${name}/async`, { method: 'POST' });
                 const data = await response.json();
                 
                 if (data.success) {
-                    updateProgress(50, 'Compile started in ESPHome...');
-                    addProgressLog('info', 'Compilation started in background');
-                    addLog(name, 'info', 'Compilation started - check ESPHome Dashboard for progress');
+                    currentTaskId = data.task_id;
+                    addProgressLog('info', `Compile task started: ${data.task_id}`);
+                    addLog(name, 'info', `Compile started (Task: ${data.task_id})`);
                     
-                    // Simulate progress and close
-                    let progress = 50;
-                    const progressInterval = setInterval(() => {
-                        progress = Math.min(progress + 5, 90);
-                        updateProgress(progress, 'Compiling...');
-                    }, 1000);
+                    // Poll for status updates (WebSocket will also send updates)
+                    const pollInterval = setInterval(async () => {
+                        try {
+                            const statusResp = await fetch(`${API_BASE}/api/task/${currentTaskId}`);
+                            const statusData = await statusResp.json();
+                            
+                            if (statusData.success) {
+                                updateProgress(statusData.progress || 0, statusData.status);
+                                
+                                if (statusData.status === 'compiled') {
+                                    clearInterval(pollInterval);
+                                    addProgressLog('success', 'Compilation completed!');
+                                    setTimeout(() => {
+                                        hideProgressModal();
+                                        fetchDevices();
+                                    }, 2000);
+                                } else if (statusData.status === 'error') {
+                                    clearInterval(pollInterval);
+                                    addProgressLog('error', statusData.result || 'Compilation failed');
+                                }
+                            }
+                        } catch (e) {
+                            console.error('Poll error:', e);
+                        }
+                    }, 2000);
                     
-                    setTimeout(() => {
-                        clearInterval(progressInterval);
-                        updateProgress(100, 'Compile started');
-                        addProgressLog('success', 'Compile started - check ESPHome Dashboard for details');
-                        setTimeout(() => {
-                            hideProgressModal();
-                            fetchDevices();
-                        }, 2000);
-                    }, 5000);
+                    // Clear interval after 10 minutes
+                    setTimeout(() => clearInterval(pollInterval), 600000);
                 } else {
                     hideProgressModal();
-                    addLog(name, 'error', data.error || 'Compilation failed');
+                    addProgressLog('error', data.error || 'Compilation failed');
                     showToast('error', 'Compilation Failed', data.error || 'Unknown error');
                 }
             } catch (e) {
                 hideProgressModal();
-                addLog(name, 'error', `Error: ${e.message}`);
+                addProgressLog('error', `Error: ${e.message}`);
                 showToast('error', 'Error', e.message);
             }
         }
         
-        // Update Device
+        // Update Device (async with WebSocket)
         async function updateDevice(name) {
             if (!confirm(`Update ${name}? This will compile and upload the firmware.`)) return;
             
             // Show progress modal
             showProgressModal(name, 'Updating');
             updateProgress(0, 'Starting update...');
-            
-            addLog(name, 'info', 'Starting update...');
+            addProgressLog('info', 'Starting update...');
             
             try {
-                updateProgress(10, 'Sending update request...');
-                const response = await fetch(`${API_BASE}/api/update/${name}`, { method: 'POST' });
+                // Use async API
+                const response = await fetch(`${API_BASE}/api/update/${name}/async`, { method: 'POST' });
                 const data = await response.json();
                 
                 if (data.success) {
-                    updateProgress(50, 'Update started in ESPHome...');
-                    addProgressLog('info', 'Update started in background');
-                    addLog(name, 'info', 'Update started - check ESPHome Dashboard for progress');
+                    currentTaskId = data.task_id;
+                    addProgressLog('info', `Upload task started: ${data.task_id}`);
+                    addLog(name, 'info', `Update started (Task: ${data.task_id})`);
                     
-                    // Simulate progress and close
-                    let progress = 50;
-                    const progressInterval = setInterval(() => {
-                        progress = Math.min(progress + 3, 85);
-                        updateProgress(progress, 'Updating...');
-                    }, 1000);
+                    // Poll for status updates
+                    const pollInterval = setInterval(async () => {
+                        try {
+                            const statusResp = await fetch(`${API_BASE}/api/task/${currentTaskId}`);
+                            const statusData = await statusResp.json();
+                            
+                            if (statusData.success) {
+                                updateProgress(statusData.progress || 0, statusData.status);
+                                
+                                if (statusData.status === 'uploaded') {
+                                    clearInterval(pollInterval);
+                                    addProgressLog('success', 'Update completed!');
+                                    setTimeout(() => {
+                                        hideProgressModal();
+                                        fetchDevices();
+                                    }, 2000);
+                                } else if (statusData.status === 'error') {
+                                    clearInterval(pollInterval);
+                                    addProgressLog('error', statusData.result || 'Update failed');
+                                }
+                            }
+                        } catch (e) {
+                            console.error('Poll error:', e);
+                        }
+                    }, 2000);
                     
-                    setTimeout(() => {
-                        clearInterval(progressInterval);
-                        updateProgress(100, 'Update started');
-                        addProgressLog('success', 'Update started - check ESPHome Dashboard for details');
-                        setTimeout(() => {
-                            hideProgressModal();
-                            fetchDevices();
-                        }, 2000);
-                    }, 8000);
+                    // Clear interval after 10 minutes
+                    setTimeout(() => clearInterval(pollInterval), 600000);
                 } else {
                     hideProgressModal();
-                    addLog(name, 'error', data.error || 'Update failed');
+                    addProgressLog('error', data.error || 'Update failed');
                     showToast('error', 'Update Failed', data.error || 'Unknown error');
                 }
             } catch (e) {
                 hideProgressModal();
-                addLog(name, 'error', `Error: ${e.message}`);
+                addProgressLog('error', `Error: ${e.message}`);
                 showToast('error', 'Error', e.message);
             }
         }
@@ -1386,9 +1458,12 @@
             modal.id = 'progress-modal';
             modal.className = 'modal-overlay active';
             modal.innerHTML = `
-                <div class="modal" style="max-width: 500px;">
+                <div class="modal" style="max-width: 600px;">
                     <div class="modal-header">
                         <h3><span class="material-icons" style="animation: spin 1s linear infinite; margin-right: 8px;">sync</span>${action} ${deviceName}</h3>
+                        <button class="btn-icon" onclick="hideProgressModal()">
+                            <span class="material-icons">close</span>
+                        </button>
                     </div>
                     <div class="modal-body">
                         <div class="progress-container" style="margin: 20px 0;">
@@ -1397,19 +1472,41 @@
                             </div>
                             <div id="progress-text" style="text-align: center; margin-top: 12px; color: var(--text-secondary);">Initializing...</div>
                         </div>
-                        <div id="progress-logs" style="background: var(--code-bg); border-radius: 8px; padding: 12px; font-family: 'Roboto Mono', monospace; font-size: 12px; max-height: 200px; overflow-y: auto; color: #d4d4d4;">
+                        <div id="progress-logs" style="background: var(--code-bg); border-radius: 8px; padding: 12px; font-family: 'Roboto Mono', monospace; font-size: 12px; max-height: 300px; overflow-y: auto; color: #d4d4d4;">
                             <div class="log-line"><span class="log-time">[${new Date().toLocaleTimeString()}]</span> Starting...</div>
                         </div>
                     </div>
-                    <div class="modal-footer" style="padding: 16px; text-align: right;">
-                        <button class="btn btn-outline" onclick="hideProgressModal()" id="progress-cancel-btn">
+                    <div class="modal-footer" style="padding: 16px; display: flex; justify-content: space-between;">
+                        <button class="btn btn-outline" onclick="setBackgroundTask()">
+                            <span class="material-icons">background_dot_small</span>
+                            Run in Background
+                        </button>
+                        <button class="btn btn-outline" onclick="hideProgressModal()">
                             <span class="material-icons">close</span>
-                            Cancel
+                            Close
                         </button>
                     </div>
                 </div>
             `;
             document.body.appendChild(modal);
+        }
+        
+        function setBackgroundTask() {
+            // Hide modal but keep task running
+            hideProgressModal();
+            showToast('info', 'Background Task', 'Task is running in background. Check logs for updates.');
+        }
+        
+        function addSystemLog(message, level = 'info') {
+            const logView = document.getElementById('log-view');
+            if (!logView) return;
+            
+            const time = new Date().toLocaleTimeString();
+            const logLine = document.createElement('div');
+            logLine.className = 'log-line';
+            logLine.innerHTML = `<span class="log-time">${time}</span> <span class="log-${level}">[system]</span> ${message}`;
+            logView.appendChild(logLine);
+            logView.scrollTop = logView.scrollHeight;
         }
         
         function updateProgress(percent, text) {
