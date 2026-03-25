@@ -10,13 +10,17 @@ import asyncio
 import aiohttp
 import subprocess
 import logging
+import threading
+import queue
 from datetime import datetime
 from typing import Optional, List, Dict, Any
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from enum import Enum
+import uuid
 
 # Request models
 class CompileRequest(BaseModel):
@@ -25,6 +29,23 @@ class CompileRequest(BaseModel):
 
 class UpdateRequest(BaseModel):
     yaml_file: Optional[str] = None
+    update_type: Optional[str] = "ota"  # ota, download, manual
+
+
+class UploadType(str, Enum):
+    OTA = "ota"
+    DOWNLOAD = "download"
+    MANUAL = "manual"
+
+
+# ESP Chip Types
+ESP_CHIP_TYPES = [
+    {"id": "esp32", "name": "ESP32", "platform": "ESP32", "boards": ["esp32dev", "esp32-c3-devkitc-02", "esp32-s2-devkitc-1", "esp32-s3-devkitc-2"]},
+    {"id": "esp32-s2", "name": "ESP32-S2", "platform": "ESP32", "boards": ["esp32-s2-devkitc-1", "esp32-s2-saola-1"]},
+    {"id": "esp32-s3", "name": "ESP32-S3", "platform": "ESP32", "boards": ["esp32-s3-devkitc-2", "esp32-s3-box-3", "seeed_xiao_esp32s3"]},
+    {"id": "esp32-c3", "name": "ESP32-C3", "platform": "ESP32", "boards": ["esp32-c3-devkitc-02"]},
+    {"id": "esp8266", "name": "ESP8266", "platform": "ESP8266", "boards": ["esp01_1m", "esp07", "esp12e", "nodemcu", "wemos_d1_mini"]},
+]
 
 
 # Logging
@@ -86,6 +107,139 @@ state = {
 
 # Background task status
 update_tasks: Dict[str, Dict[str, Any]] = {}
+
+# WebSocket connections
+websocket_connections: List[WebSocket] = []
+
+# Task queue for background processes
+task_queue = queue.Queue()
+
+
+async def broadcast_log(task_id: str, log_line: str, log_type: str = "info"):
+    """Broadcast log to all connected WebSocket clients"""
+    message = json.dumps({
+        "type": "log",
+        "task_id": task_id,
+        "log": log_line,
+        "log_type": log_type,
+        "timestamp": datetime.now().isoformat()
+    })
+    for ws in websocket_connections:
+        try:
+            await ws.send_text(message)
+        except:
+            pass
+
+
+async def broadcast_progress(task_id: str, progress: int, status: str, message: str = ""):
+    """Broadcast progress to all connected WebSocket clients"""
+    message_json = json.dumps({
+        "type": "progress",
+        "task_id": task_id,
+        "progress": progress,
+        "status": status,
+        "message": message,
+        "timestamp": datetime.now().isoformat()
+    })
+    for ws in websocket_connections:
+        try:
+            await ws.send_text(message_json)
+        except:
+            pass
+
+
+def run_compile_with_logs(task_id: str, device_name: str, yaml_file: str):
+    """Run compile in background with real-time log streaming"""
+    try:
+        update_tasks[task_id]["status"] = "compiling"
+        update_tasks[task_id]["progress"] = 0
+        
+        # Run esphome compile with real-time output
+        process = subprocess.Popen(
+            ["docker", "exec", "esphome", "esphome", "compile", yaml_file],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1
+        )
+        
+        # Stream output line by line
+        for line in iter(process.stdout.readline, ''):
+            if line:
+                # Put log in queue for WebSocket broadcast
+                task_queue.put(("log", task_id, line.strip(), "info"))
+                
+                # Update progress based on output
+                if "Compiling" in line:
+                    update_tasks[task_id]["progress"] = min(90, update_tasks[task_id]["progress"] + 5)
+                elif "Successfully" in line:
+                    update_tasks[task_id]["progress"] = 95
+        
+        process.wait()
+        
+        if process.returncode == 0:
+            update_tasks[task_id]["status"] = "compiled"
+            update_tasks[task_id]["progress"] = 100
+            update_tasks[task_id]["result"] = "success"
+            task_queue.put(("progress", task_id, 100, "compiled", "Compilation successful"))
+        else:
+            update_tasks[task_id]["status"] = "error"
+            update_tasks[task_id]["result"] = "failed"
+            task_queue.put(("progress", task_id, 0, "error", "Compilation failed"))
+            
+    except Exception as e:
+        update_tasks[task_id]["status"] = "error"
+        update_tasks[task_id]["result"] = str(e)
+        task_queue.put(("progress", task_id, 0, "error", str(e)))
+
+
+def run_upload_with_logs(task_id: str, device_name: str, yaml_file: str, upload_type: str = "ota"):
+    """Run upload in background with real-time log streaming"""
+    try:
+        update_tasks[task_id]["status"] = "uploading"
+        update_tasks[task_id]["progress"] = 0
+        update_tasks[task_id]["upload_type"] = upload_type
+        
+        # Run esphome upload with real-time output
+        cmd = ["docker", "exec", "esphome", "esphome", "upload", "--device", "OTA", yaml_file]
+        
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1
+        )
+        
+        # Stream output line by line
+        for line in iter(process.stdout.readline, ''):
+            if line:
+                task_queue.put(("log", task_id, line.strip(), "info"))
+                
+                # Update progress based on output
+                if "Connecting" in line:
+                    update_tasks[task_id]["progress"] = 20
+                elif "Uploading" in line:
+                    update_tasks[task_id]["progress"] = 50
+                elif "Successfully" in line:
+                    update_tasks[task_id]["progress"] = 95
+        
+        process.wait()
+        
+        if process.returncode == 0:
+            update_tasks[task_id]["status"] = "uploaded"
+            update_tasks[task_id]["progress"] = 100
+            update_tasks[task_id]["result"] = "success"
+            task_queue.put(("progress", task_id, 100, "uploaded", "Upload successful"))
+        else:
+            update_tasks[task_id]["status"] = "error"
+            update_tasks[task_id]["result"] = "failed"
+            task_queue.put(("progress", task_id, 0, "error", "Upload failed"))
+            
+    except Exception as e:
+        update_tasks[task_id]["status"] = "error"
+        update_tasks[task_id]["result"] = str(e)
+        task_queue.put(("progress", task_id, 0, "error", str(e)))
 
 
 def publish_mqtt(topic: str, payload: str, retain: bool = True):
@@ -611,6 +765,237 @@ async def get_logs(device_name: str):
 def get_default_html():
     """Return default HTML page"""
     return """<!DOCTYPE html><html><head><title>ESPHome Remote Manager</title></head><body><h1>ESPHome Remote Manager</h1><p>Loading...</p><script>fetch('/api/devices').then(r=>r.json()).then(d=>document.body.innerHTML='<pre>'+JSON.stringify(d,null,2)+'</pre>');</script></body></html>"""
+
+
+# ========== NEW API ENDPOINTS ==========
+
+@app.get("/api/chips")
+async def get_chip_types():
+    """Get supported ESP chip types and boards"""
+    return {"success": True, "chips": ESP_CHIP_TYPES}
+
+
+@app.post("/api/compile/{device_name}/async")
+async def compile_device_async(device_name: str, background_tasks: BackgroundTasks):
+    """Start compile in background and return task ID"""
+    try:
+        # Get YAML file
+        yaml_file = None
+        devices = await get_devices_from_dashboard()
+        for device in devices:
+            if device.get("name") == device_name:
+                yaml_file = device.get("configuration")
+                break
+        
+        if not yaml_file:
+            yaml_file = f"{device_name}.yaml"
+        
+        # Generate task ID
+        task_id = str(uuid.uuid4())
+        update_tasks[task_id] = {
+            "device": device_name,
+            "yaml_file": yaml_file,
+            "status": "starting",
+            "progress": 0,
+            "result": None,
+            "created": datetime.now().isoformat()
+        }
+        
+        # Run compile in thread with logs
+        thread = threading.Thread(
+            target=run_compile_with_logs,
+            args=(task_id, device_name, yaml_file)
+        )
+        thread.daemon = True
+        thread.start()
+        
+        return {
+            "success": True,
+            "task_id": task_id,
+            "device": device_name,
+            "yaml_file": yaml_file,
+            "message": "Compile started in background"
+        }
+    except Exception as e:
+        logger.error(f"Failed to start compile for {device_name}: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@app.post("/api/update/{device_name}/async")
+async def update_device_async(device_name: str, background_tasks: BackgroundTasks, request: Optional[UpdateRequest] = None):
+    """Start upload in background and return task ID"""
+    try:
+        # Get YAML file
+        yaml_file = None
+        devices = await get_devices_from_dashboard()
+        for device in devices:
+            if device.get("name") == device_name:
+                yaml_file = device.get("configuration")
+                break
+        
+        if not yaml_file:
+            yaml_file = f"{device_name}.yaml"
+        
+        # Get upload type
+        upload_type = request.upload_type if request and request.upload_type else "ota"
+        
+        # Generate task ID
+        task_id = str(uuid.uuid4())
+        update_tasks[task_id] = {
+            "device": device_name,
+            "yaml_file": yaml_file,
+            "status": "starting",
+            "progress": 0,
+            "result": None,
+            "upload_type": upload_type,
+            "created": datetime.now().isoformat()
+        }
+        
+        # Run upload in thread with logs
+        thread = threading.Thread(
+            target=run_upload_with_logs,
+            args=(task_id, device_name, yaml_file, upload_type)
+        )
+        thread.daemon = True
+        thread.start()
+        
+        return {
+            "success": True,
+            "task_id": task_id,
+            "device": device_name,
+            "yaml_file": yaml_file,
+            "upload_type": upload_type,
+            "message": "Upload started in background"
+        }
+    except Exception as e:
+        logger.error(f"Failed to start update for {device_name}: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@app.get("/api/task/{task_id}")
+async def get_task_status(task_id: str):
+    """Get status of a background task"""
+    if task_id not in update_tasks:
+        return {"success": False, "error": "Task not found"}
+    
+    task = update_tasks[task_id]
+    return {
+        "success": True,
+        "task_id": task_id,
+        "device": task.get("device"),
+        "yaml_file": task.get("yaml_file"),
+        "status": task.get("status"),
+        "progress": task.get("progress", 0),
+        "result": task.get("result"),
+        "upload_type": task.get("upload_type"),
+        "created": task.get("created")
+    }
+
+
+@app.get("/api/tasks")
+async def list_tasks():
+    """List all background tasks"""
+    return {
+        "success": True,
+        "tasks": [
+            {
+                "task_id": task_id,
+                "device": task.get("device"),
+                "status": task.get("status"),
+                "progress": task.get("progress", 0),
+                "created": task.get("created")
+            }
+            for task_id, task in update_tasks.items()
+        ]
+    }
+
+
+@app.delete("/api/task/{task_id}")
+async def cancel_task(task_id: str):
+    """Cancel a background task"""
+    if task_id not in update_tasks:
+        return {"success": False, "error": "Task not found"}
+    
+    # Mark task as cancelled
+    update_tasks[task_id]["status"] = "cancelled"
+    return {"success": True, "message": f"Task {task_id} cancelled"}
+
+
+@app.websocket("/ws/logs")
+async def websocket_logs(websocket: WebSocket):
+    """WebSocket for real-time log streaming"""
+    await websocket.accept()
+    websocket_connections.append(websocket)
+    
+    try:
+        while True:
+            # Keep connection alive and process messages
+            data = await websocket.receive_text()
+            
+            # Handle ping/pong
+            if data == "ping":
+                await websocket.send_text("pong")
+            
+    except WebSocketDisconnect:
+        websocket_connections.remove(websocket)
+
+
+@app.get("/api/yaml/{device_name}")
+async def get_yaml_config(device_name: str):
+    """Get YAML configuration for a device"""
+    try:
+        # Get YAML file from ESPHome Dashboard
+        result = await call_esphome_api(f"/edit?configuration={device_name}.yaml")
+        return {"success": True, "yaml": result}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@app.post("/api/yaml/{device_name}")
+async def save_yaml_config(device_name: str, yaml_content: str):
+    """Save YAML configuration for a device"""
+    try:
+        # Save YAML to ESPHome Dashboard
+        result = await call_esphome_api(
+            f"/edit?configuration={device_name}.yaml",
+            method="POST",
+            data={"content": yaml_content}
+        )
+        return {"success": True, "message": "YAML saved"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@app.get("/api/download/{device_name}")
+async def download_firmware(device_name: str):
+    """Download compiled firmware for manual upload"""
+    try:
+        # Get firmware path
+        firmware_path = f"/config/.esphome/build/{device_name}/{device_name}.bin"
+        
+        # Check if file exists in container
+        result = subprocess.run(
+            ["docker", "exec", "esphome", "test", "-f", firmware_path],
+            capture_output=True,
+            text=True
+        )
+        
+        if result.returncode != 0:
+            return {"success": False, "error": "Firmware not found. Compile first."}
+        
+        # Stream firmware file
+        subprocess.run(
+            ["docker", "cp", f"esphome:{firmware_path}", f"/tmp/{device_name}.bin"],
+            capture_output=True
+        )
+        
+        return FileResponse(
+            f"/tmp/{device_name}.bin",
+            media_type="application/octet-stream",
+            filename=f"{device_name}.bin"
+        )
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 
 if __name__ == "__main__":
