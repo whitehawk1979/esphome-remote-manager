@@ -832,6 +832,13 @@
                         <button class="btn btn-outline btn-sm" onclick="filterTemplates('output')">Outputs</button>
                         <button class="btn btn-outline btn-sm" onclick="filterTemplates('display')">Displays</button>
                         <button class="btn btn-outline btn-sm" onclick="filterTemplates('network')">Network</button>
+                        <button class="btn btn-outline btn-sm" onclick="filterTemplates('climate')">Climate</button>
+                        <button class="btn btn-outline btn-sm" onclick="filterTemplates('cover')">Covers</button>
+                        <button class="btn btn-outline btn-sm" onclick="filterTemplates('fan')">Fans</button>
+                        <button class="btn btn-outline btn-sm" onclick="filterTemplates('button')">Buttons</button>
+                        <button class="btn btn-outline btn-sm" onclick="filterTemplates('select')">Selects</button>
+                        <button class="btn btn-outline btn-sm" onclick="filterTemplates('number')">Numbers</button>
+                        <button class="btn btn-outline btn-sm" onclick="filterTemplates('text')">Text</button>
                     </div>
                     
                     <!-- Template Selector -->
@@ -2305,6 +2312,75 @@ sensor:
     address: 0x76
     update_interval: 60s`
             },
+            'sensor.hdc1080': {
+                name: 'HDC1080 Temperature/Humidity',
+                category: 'sensor',
+                params: [
+                    { name: 'name', label: 'Name', default: 'HDC1080' }
+                ],
+                template: `i2c:
+  sda: GPIO21
+  scl: GPIO22
+  scan: true
+
+sensor:
+  - platform: hdc1080
+    temperature:
+      name: "{{name}} Temperature"
+    humidity:
+      name: "{{name}} Humidity"
+    update_interval: 60s`
+            },
+            'sensor.hlw8012': {
+                name: 'HLW8012 Power',
+                category: 'sensor',
+                params: [
+                    { name: 'name', label: 'Name', default: 'Power' },
+                    { name: 'sel_pin', label: 'SEL Pin', default: 'GPIO5' },
+                    { name: 'cf_pin', label: 'CF Pin', default: 'GPIO14' },
+                    { name: 'cf1_pin', label: 'CF1 Pin', default: 'GPIO13' }
+                ],
+                template: `sensor:
+  - platform: hlw8012
+    sel_pin: {{sel_pin}}
+    cf_pin: {{cf_pin}}
+    cf1_pin: {{cf1_pin}}
+    voltage:
+      name: "{{name}} Voltage"
+    current:
+      name: "{{name}} Current"
+    power:
+      name: "{{name}} Power"`
+            },
+            'sensor.pulse_counter': {
+                name: 'Pulse Counter',
+                category: 'sensor',
+                params: [
+                    { name: 'name', label: 'Name', default: 'Pulse Counter' },
+                    { name: 'pin', label: 'GPIO Pin', default: 'GPIO4' }
+                ],
+                template: `sensor:
+  - platform: pulse_counter
+    pin: {{pin}}
+    name: "{{name}}"
+    unit_of_measurement: 'pulses/min'
+    update_interval: 60s`
+            },
+            'sensor.ultrasonic': {
+                name: 'Ultrasonic Distance',
+                category: 'sensor',
+                params: [
+                    { name: 'name', label: 'Name', default: 'Distance' },
+                    { name: 'trigger_pin', label: 'Trigger Pin', default: 'GPIO5' },
+                    { name: 'echo_pin', label: 'Echo Pin', default: 'GPIO4' }
+                ],
+                template: `sensor:
+  - platform: ultrasonic
+    trigger_pin: {{trigger_pin}}
+    echo_pin: {{echo_pin}}
+    name: "{{name}}"
+    update_interval: 60s`
+            },
             // Binary Sensors
             'binary_sensor.gpio': {
                 name: 'GPIO Binary Sensor',
@@ -2312,7 +2388,7 @@ sensor:
                 params: [
                     { name: 'name', label: 'Name', default: 'Button' },
                     { name: 'pin', label: 'GPIO Pin', default: 'GPIO0' },
-                    { name: 'inverted', label: 'Inverted', default: 'false', options: ['true', 'false'] }
+                    { name: 'inverted', label: 'Inverted', default: 'true', options: ['true', 'false'] }
                 ],
                 template: `binary_sensor:
   - platform: gpio
@@ -2321,6 +2397,7 @@ sensor:
       mode:
         input: true
         pullup: true
+      inverted: {{inverted}}
     name: "{{name}}"
     filters:
       - delayed_on: 10ms
@@ -2340,6 +2417,16 @@ sensor:
     device_class: motion
     filters:
       - delayed_off: 30s`
+            },
+            'binary_sensor.status': {
+                name: 'Status Binary Sensor',
+                category: 'binary_sensor',
+                params: [
+                    { name: 'name', label: 'Name', default: 'Status' }
+                ],
+                template: `binary_sensor:
+  - platform: status
+    name: "{{name}}"`
             },
             // Switches
             'switch.gpio': {
@@ -2376,6 +2463,22 @@ binary_sensor:
       mode: INPUT_PULLUP
       inverted: true
     name: "{{name}} Button"`
+            },
+            'switch.template': {
+                name: 'Template Switch',
+                category: 'switch',
+                params: [
+                    { name: 'name', label: 'Name', default: 'Virtual Switch' },
+                    { name: 'id', label: 'ID', default: 'virtual_switch' }
+                ],
+                template: `switch:
+  - platform: template
+    name: "{{name}}"
+    id: {{id}}
+    turn_on_action:
+      - logger.log: "Switch turned on"
+    turn_off_action:
+      - logger.log: "Switch turned off"`
             },
             // Lights
             'light.monochromatic': {
@@ -2422,6 +2525,45 @@ light:
     green: green_output
     blue: blue_output`
             },
+            'light.cwww': {
+                name: 'Warm/Cold White Light',
+                category: 'light',
+                params: [
+                    { name: 'name', label: 'Name', default: 'CWWW Light' },
+                    { name: 'cold_white_pin', label: 'Cold White Pin', default: 'GPIO5' },
+                    { name: 'warm_white_pin', label: 'Warm White Pin', default: 'GPIO4' }
+                ],
+                template: `output:
+  - platform: ledc
+    pin: {{cold_white_pin}}
+    id: cold_white
+  - platform: ledc
+    pin: {{warm_white_pin}}
+    id: warm_white
+
+light:
+  - platform: cwww
+    name: "{{name}}"
+    cold_white: cold_white
+    warm_white: warm_white`
+            },
+            'light.neopixel': {
+                name: 'NeoPixel/WS2812B',
+                category: 'light',
+                params: [
+                    { name: 'name', label: 'Name', default: 'NeoPixel' },
+                    { name: 'pin', label: 'GPIO Pin', default: 'GPIO3' },
+                    { name: 'num_leds', label: 'Number of LEDs', default: '60' }
+                ],
+                template: `light:
+  - platform: neopixelbus
+    type: GRB
+    variant: WS2812x
+    pin: {{pin}}
+    num_leds: {{num_leds}}
+    name: "{{name}}"
+    id: neopixel_light`
+            },
             // Outputs
             'output.ledc': {
                 name: 'LEDC PWM Output',
@@ -2438,6 +2580,25 @@ light:
     min_power: 0.0
     max_power: 1.0`
             },
+            'output.servo': {
+                name: 'Servo Output',
+                category: 'output',
+                params: [
+                    { name: 'name', label: 'Name', default: 'Servo' },
+                    { name: 'pin', label: 'GPIO Pin', default: 'GPIO5' }
+                ],
+                template: `output:
+  - platform: ledc
+    pin: {{pin}}
+    id: servo_output
+    frequency: 50 Hz
+
+servo:
+  - id: servo_1
+    output: servo_output
+    min_level: 2.5%
+    max_level: 12.5%`
+            },
             // Displays
             'display.ssd1306': {
                 name: 'SSD1306 OLED',
@@ -2450,6 +2611,11 @@ light:
   sda: GPIO21
   scl: GPIO22
   scan: true
+
+font:
+  - file: "gfonts://Roboto"
+    id: font
+    size: 20
 
 display:
   - platform: ssd1306_i2c
@@ -2469,6 +2635,11 @@ display:
   mosi_pin: GPIO23
   clk_pin: GPIO18
 
+font:
+  - file: "gfonts://Roboto"
+    id: font
+    size: 20
+
 display:
   - platform: st7789
     model: {{width}}x{{height}}
@@ -2477,6 +2648,22 @@ display:
     reset_pin: GPIO33
     lambda: |-
       it.print(0, 0, id(font), "Hello World!");`
+            },
+            'display.tm1621': {
+                name: 'TM1621 LED Display',
+                category: 'display',
+                params: [
+                    { name: 'name', label: 'Name', default: 'Display' }
+                ],
+                template: `display:
+  - platform: tm1621
+    id: tm1621_display
+    cs_pin: GPIO5
+    clk_pin: GPIO4
+    dio_pin: GPIO12
+    stb_pin: GPIO14
+    lambda: |-
+      it.display("1234");`
             },
             // Network
             'network.wifi': {
@@ -2522,6 +2709,150 @@ api:
 # Enable OTA updates
 ota:
   password: "{{ota_password}}"`
+            },
+            'network.web_server': {
+                name: 'Web Server',
+                category: 'network',
+                params: [
+                    { name: 'port', label: 'Port', default: '80' },
+                    { name: 'user', label: 'Username', default: 'admin' },
+                    { name: 'password', label: 'Password', default: 'admin' }
+                ],
+                template: `web_server:
+  port: {{port}}
+  auth:
+    username: {{user}}
+    password: "{{password}}"`
+            },
+            // Climate
+            'climate.thermostat': {
+                name: 'Thermostat Climate',
+                category: 'climate',
+                params: [
+                    { name: 'name', label: 'Name', default: 'Thermostat' },
+                    { name: 'sensor_id', label: 'Sensor ID', default: 'temp_sensor' }
+                ],
+                template: `climate:
+  - platform: thermostat
+    name: "{{name}}"
+    sensor: {{sensor_id}}
+    default_preset: Home
+    min_heat_temp: 15°C
+    max_heat_temp: 28°C
+    heat_deadband: 0.5°C
+    heat_action:
+      - switch.turn_on: heater_relay
+    idle_action:
+      - switch.turn_off: heater_relay`
+            },
+            // Covers
+            'cover.template': {
+                name: 'Template Cover',
+                category: 'cover',
+                params: [
+                    { name: 'name', label: 'Name', default: 'Blinds' }
+                ],
+                template: `cover:
+  - platform: template
+    name: "{{name}}"
+    id: blinds_cover
+    open_action:
+      - switch.turn_on: open_relay
+    close_action:
+      - switch.turn_on: close_relay
+    stop_action:
+      - switch.turn_on: stop_relay
+    optimistic: true`
+            },
+            // Fans
+            'fan.speed': {
+                name: 'Speed Fan',
+                category: 'fan',
+                params: [
+                    { name: 'name', label: 'Name', default: 'Fan' },
+                    { name: 'pin', label: 'GPIO Pin', default: 'GPIO5' }
+                ],
+                template: `output:
+  - platform: ledc
+    pin: {{pin}}
+    id: fan_pwm
+
+fan:
+  - platform: speed
+    name: "{{name}}"
+    output: fan_pwm
+    speed_count: 3`
+            },
+            // Buttons
+            'button.restart': {
+                name: 'Restart Button',
+                category: 'button',
+                params: [
+                    { name: 'name', label: 'Name', default: 'Restart' }
+                ],
+                template: `button:
+  - platform: restart
+    name: "{{name}}"`
+            },
+            'button.factory_reset': {
+                name: 'Factory Reset Button',
+                category: 'button',
+                params: [
+                    { name: 'name', label: 'Name', default: 'Factory Reset' }
+                ],
+                template: `button:
+  - platform: factory_reset
+    name: "{{name}}"`
+            },
+            // Select
+            'select.template': {
+                name: 'Template Select',
+                category: 'select',
+                params: [
+                    { name: 'name', label: 'Name', default: 'Mode' },
+                    { name: 'options', label: 'Options', default: 'Auto,Manual,Off' }
+                ],
+                template: `select:
+  - platform: template
+    name: "{{name}}"
+    id: mode_select
+    options:
+      - Auto
+      - Manual
+      - Off
+    initial_option: Auto`
+            },
+            // Number
+            'number.template': {
+                name: 'Template Number',
+                category: 'number',
+                params: [
+                    { name: 'name', label: 'Name', default: 'Value' },
+                    { name: 'min', label: 'Min', default: '0' },
+                    { name: 'max', label: 'Max', default: '100' }
+                ],
+                template: `number:
+  - platform: template
+    name: "{{name}}"
+    id: value_number
+    min_value: {{min}}
+    max_value: {{max}}
+    step: 1
+    optimistic: true`
+            },
+            // Text
+            'text.template': {
+                name: 'Template Text',
+                category: 'text',
+                params: [
+                    { name: 'name', label: 'Name', default: 'Message' }
+                ],
+                template: `text:
+  - platform: template
+    name: "{{name}}"
+    id: message_text
+    optimistic: true
+    max_length: 255`
             }
         };
         
@@ -2644,7 +2975,14 @@ ota:
                 'light': 'Lights',
                 'output': 'Outputs',
                 'display': 'Displays',
-                'network': 'Network'
+                'network': 'Network',
+                'climate': 'Climate',
+                'cover': 'Covers',
+                'fan': 'Fans',
+                'button': 'Buttons',
+                'select': 'Selects',
+                'number': 'Numbers',
+                'text': 'Text'
             };
             
             let html = '';
