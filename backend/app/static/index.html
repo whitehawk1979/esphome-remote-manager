@@ -1438,8 +1438,12 @@
             showUploadModal(deviceName);
         }
         
-        // Device select change handler - show upload button
-        document.addEventListener('DOMContentLoaded', function() {
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', () => {
+            initTemplatesSidebar();
+            fetchDevices();
+            fetchHealth();
+            loadSettings();
             const deviceSelect = document.getElementById('yaml-device-select');
             if (deviceSelect) {
                 deviceSelect.addEventListener('change', function() {
@@ -1451,6 +1455,9 @@
                     }
                 });
             }
+            // Refresh intervals
+            setInterval(fetchHealth, 30000);
+            setInterval(fetchDevices, 60000);
         });
         
         // Parse YAML for components
@@ -2652,9 +2659,6 @@ ota:
             
             sidebar.innerHTML = html;
         }
-        
-        // Initialize on load
-        document.addEventListener('DOMContentLoaded', initTemplatesSidebar);
 
         // New Device Modal
         function showNewDeviceModal() {
@@ -2753,11 +2757,6 @@ ota:
             // Show success message
             addLog(name, 'info', 'New device configuration created. Don\'t forget to save!');
         }
-
-        // Initialize templates on load
-        document.addEventListener('DOMContentLoaded', () => {
-            initTemplates();
-        });
         
         async function testMQTTConnection() {
             // Show loading state
@@ -2951,15 +2950,6 @@ ota:
             el.className = `status-indicator ${status}`;
             el.innerHTML = `<span class="material-icons">${status === 'success' ? 'check_circle' : status === 'error' ? 'error' : 'sync'}</span> ${text}`;
         }
-        
-        // Initialize
-        document.addEventListener('DOMContentLoaded', () => {
-            fetchHealth();
-            fetchDevices();
-            loadSettings();
-            setInterval(fetchHealth, 30000);
-            setInterval(fetchDevices, 60000);
-        });
         
         // Close modal on outside click
         document.getElementById('device-modal').addEventListener('click', (e) => {
