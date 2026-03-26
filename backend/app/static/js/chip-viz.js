@@ -97,49 +97,86 @@ function parsePeripheralsFromYaml(yaml) {
     const peripherals = [];
     if (!yaml) return peripherals;
     
+    // Extract ALL pins first
+    const allPins = new Set();
+    const pinPatterns = [
+        /pin:\s*(?:GPIO)?(\d+)/gi,
+        /pin:\s*\n\s*number:\s*(?:GPIO)?(\d+)/gi,
+        /number:\s*(?:GPIO)?(\d+)/gi,
+        /sda:\s*(?:GPIO)?(\d+)/gi,
+        /scl:\s*(?:GPIO)?(\d+)/gi,
+        /tx_pin:\s*(?:GPIO)?(\d+)/gi,
+        /rx_pin:\s*(?:GPIO)?(\d+)/gi
+    ];
+    
+    pinPatterns.forEach(pattern => {
+        let match;
+        while ((match = pattern.exec(yaml)) !== null) {
+            const pinNum = parseInt(match[1]);
+            if (!isNaN(pinNum) && pinNum >= 0 && pinNum <= 48) {
+                allPins.add(pinNum);
+            }
+        }
+    });
+    
     // I2C devices
     const i2cMatch = yaml.match(/i2c:[\s\S]*?sda:\s*(?:GPIO)?(\d+)[\s\S]*?scl:\s*(?:GPIO)?(\d+)/i);
     if (i2cMatch) {
+        const sdaPin = parseInt(i2cMatch[1]);
+        const sclPin = parseInt(i2cMatch[2]);
+        
         // Check for common I2C devices
-        const i2cDevices = ['bme280', 'bmp280', 'aht10', 'ssd1306', 'pcf8574', 'mcp23017'];
+        const i2cDevices = [
+            { pattern: /bme280/i, type: 'bme280', name: 'BME280', icon: 'compress' },
+            { pattern: /bmp280/i, type: 'bmp280', name: 'BMP280', icon: 'compress' },
+            { pattern: /aht10|aht20/i, type: 'aht10', name: 'AHT20', icon: 'thermostat' },
+            { pattern: /ssd1306/i, type: 'ssd1306', name: 'SSD1306 OLED', icon: 'screenshot_monitor' },
+            { pattern: /pcf8574/i, type: 'pcf8574', name: 'PCF8574', icon: 'developer_board' },
+            { pattern: /mcp23017/i, type: 'mcp23017', name: 'MCP23017', icon: 'developer_board' }
+        ];
+        
+        let found = false;
         i2cDevices.forEach(device => {
-            if (yaml.toLowerCase().includes(device)) {
+            if (yaml.match(device.pattern)) {
                 peripherals.push({
-                    type: device,
-                    name: PERIPHERAL_TYPES[device]?.name || device,
+                    type: device.type,
+                    name: device.name,
                     pins: [
-                        { name: 'SDA', pin: `GPIO${i2cMatch[1]}`, bus: 'I2C' },
-                        { name: 'SCL', pin: `GPIO${i2cMatch[2]}`, bus: 'I2C' }
-                    ]
+                        { name: 'SDA', pin: `GPIO${sdaPin}`, bus: 'I2C' },
+                        { name: 'SCL', pin: `GPIO${sclPin}`, bus: 'I2C' }
+                    ],
+                    icon: device.icon
                 });
+                found = true;
             }
         });
-    }
-    
-    // SPI devices
-    const spiMatch = yaml.match(/spi:[\s\S]*?(?:clk_pin|clk):\s*(?:GPIO)?(\d+)[\s\S]*?(?:mosi_pin|mosi):\s*(?:GPIO)?(\d+)[\s\S]*?(?:miso_pin|miso):\s*(?:GPIO)?(\d+)/i);
-    if (spiMatch) {
-        peripherals.push({
-            type: 'spi_device',
-            name: 'SPI Device',
-            pins: [
-                { name: 'CLK', pin: `GPIO${spiMatch[1]}`, bus: 'SPI' },
-                { name: 'MOSI', pin: `GPIO${spiMatch[2]}`, bus: 'SPI' },
-                { name: 'MISO', pin: `GPIO${spiMatch[3]}`, bus: 'SPI' }
-            ]
-        });
+        
+        if (!found) {
+            peripherals.push({
+                type: 'i2c_device',
+                name: 'I2C Device',
+                pins: [
+                    { name: 'SDA', pin: `GPIO${sdaPin}`, bus: 'I2C' },
+                    { name: 'SCL', pin: `GPIO${sclPin}`, bus: 'I2C' }
+                ],
+                icon: 'developer_board'
+            });
+        }
     }
     
     // UART devices
     const uartMatch = yaml.match(/uart:[\s\S]*?tx_pin:\s*(?:GPIO)?(\d+)[\s\S]*?rx_pin:\s*(?:GPIO)?(\d+)/i);
     if (uartMatch) {
+        const txPin = parseInt(uartMatch[1]);
+        const rxPin = parseInt(uartMatch[2]);
         peripherals.push({
             type: 'uart_device',
             name: 'UART Device',
             pins: [
-                { name: 'TX', pin: `GPIO${uartMatch[1]}`, bus: 'UART' },
-                { name: 'RX', pin: `GPIO${uartMatch[2]}`, bus: 'UART' }
-            ]
+                { name: 'TX', pin: `GPIO${txPin}`, bus: 'UART' },
+                { name: 'RX', pin: `GPIO${rxPin}`, bus: 'UART' }
+            ],
+            icon: 'swap_horiz'
         });
     }
     
@@ -149,43 +186,79 @@ function parsePeripheralsFromYaml(yaml) {
         peripherals.push({
             type: 'ds18b20',
             name: 'OneWire Sensor',
-            pins: [{ name: 'DATA', pin: `GPIO${onewireMatch[1]}` }]
+            pins: [{ name: 'DATA', pin: `GPIO${onewireMatch[1]}` }],
+            icon: 'thermostat'
         });
     }
     
     // DHT sensors
-    const dhtMatch = yaml.match(/dht:[\s\S]*?pin:\s*(?:GPIO)?(\d+)/i);
+    const dhtMatch = yaml.match(/- platform: dht[\s\S]*?pin:\s*(?:GPIO)?(\d+)/i);
     if (dhtMatch) {
         peripherals.push({
             type: 'dht22',
             name: 'DHT Sensor',
-            pins: [{ name: 'DATA', pin: `GPIO${dhtMatch[1]}` }]
+            pins: [{ name: 'DATA', pin: `GPIO${dhtMatch[1]}` }],
+            icon: 'thermostat'
         });
     }
     
-    // Relays/GPIO outputs
-    const relayMatch = yaml.match(/switch:[\s\S]*?(?:pin:\s*(?:GPIO)?(\d+)|output_pin:\s*(?:GPIO)?(\d+))/gi);
-    if (relayMatch) {
-        relayMatch.forEach(match => {
-            const pin = match.match(/(?:pin:\s*(?:GPIO)?(\d+)|output_pin:\s*(?:GPIO)?(\d+))/i);
-            if (pin) {
-                const gpioPin = pin[1] || pin[2];
-                peripherals.push({
-                    type: 'relay',
-                    name: 'Relay/Switch',
-                    pins: [{ name: 'IN', pin: `GPIO${gpioPin}` }]
-                });
-            }
+    // ADC sensors
+    const adcMatches = [...yaml.matchAll(/- platform: adc[\s\S]*?pin:\s*(?:GPIO)?(\d+)/gi)];
+    adcMatches.forEach((match, index) => {
+        const adcPin = parseInt(match[1]);
+        peripherals.push({
+            type: 'adc_sensor',
+            name: `ADC Sensor ${index + 1}`,
+            pins: [{ name: 'AO', pin: `GPIO${adcPin}` }],
+            icon: 'speed'
         });
+    });
+    
+    // GPIO binary sensors
+    const gpioBinaryMatches = [...yaml.matchAll(/- platform: gpio[\s\S]*?pin:[\s\S]*?number:\s*(?:GPIO)?(\d+)/gi)];
+    gpioBinaryMatches.forEach((match, index) => {
+        const gpioPin = parseInt(match[1]);
+        peripherals.push({
+            type: 'binary_sensor',
+            name: `Binary Sensor ${index + 1}`,
+            pins: [{ name: 'IN', pin: `GPIO${gpioPin}` }],
+            icon: 'sensors'
+        });
+    });
+    
+    // Relays/Switches
+    const switchMatch = yaml.match(/switch:[\s\S]*?(?:pin:\s*(?:GPIO)?(\d+)|output_pin:\s*(?:GPIO)?(\d+))/i);
+    if (switchMatch) {
+        const relayPin = parseInt(switchMatch[1] || switchMatch[2]);
+        if (!isNaN(relayPin)) {
+            peripherals.push({
+                type: 'relay',
+                name: 'Relay/Switch',
+                pins: [{ name: 'IN', pin: `GPIO${relayPin}` }],
+                icon: 'power'
+            });
+        }
     }
     
     // LEDs
-    const ledMatch = yaml.match(/light:[\s\S]*?pin:\s*(?:GPIO)?(\d+)/i);
+    const ledMatch = yaml.match(/esp32_rmt_led_strip:[\s\S]*?pin:\s*(?:GPIO)?(\d+)/i);
     if (ledMatch) {
         peripherals.push({
             type: 'ws2812b',
-            name: 'LED',
-            pins: [{ name: 'DATA', pin: `GPIO${ledMatch[1]}` }]
+            name: 'RGB LED',
+            pins: [{ name: 'DATA', pin: `GPIO${ledMatch[1]}` }],
+            icon: 'lightbulb'
+        });
+    }
+    
+    // Status LED
+    const statusLedMatch = yaml.match(/status_led:[\s\S]*?number:\s*(?:GPIO)?(\d+)/i);
+    if (statusLedMatch) {
+        peripherals.push({
+            type: 'led',
+            name: 'Status LED',
+            pins: [{ name: 'LED', pin: `GPIO${statusLedMatch[1]}` }],
+            icon: 'lightbulb'
         });
     }
     
