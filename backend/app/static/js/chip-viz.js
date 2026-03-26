@@ -52,6 +52,7 @@ const PERIPHERAL_TYPES = {
 const BOARD_PINS = {
     'esp32dev': {
         name: 'ESP32 DevKit',
+        image: '/static/img/chips/esp32-devkit-v1.jpg',
         leftPins: [3, 1, 16, 17, 18, 19, 21, 22, 23, 25, 26, 27, 34, 35, 36, 39],
         rightPins: [0, 2, 4, 5, 12, 13, 14, 15, 32, 33],
         adcPins: [32, 33, 34, 35, 36, 39],
@@ -62,6 +63,7 @@ const BOARD_PINS = {
     },
     'esp32-s3-devkitc-1': {
         name: 'ESP32-S3 DevKitC-1',
+        image: '/static/img/chips/esp32-s3-devkitc-1.jpg',
         leftPins: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21],
         rightPins: [35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48],
         adcPins: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
@@ -72,6 +74,7 @@ const BOARD_PINS = {
     },
     'esp32s3box': {
         name: 'ESP32-S3-Box',
+        image: '/static/img/chips/esp32-s3-box.jpg',
         leftPins: [4, 5, 6, 7, 15, 16, 17, 18, 8, 9, 10, 11, 12, 13, 14, 1, 2, 42],
         rightPins: [35, 36, 37, 38, 39, 40, 41, 43, 44, 45, 46, 47, 48],
         adcPins: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
@@ -82,6 +85,7 @@ const BOARD_PINS = {
     },
     'esp8266': {
         name: 'ESP8266 D1 Mini',
+        image: '/static/img/chips/esp8266-d1-mini.png',
         leftPins: [16, 5, 4, 0, 2, 14, 12, 13],
         rightPins: [15, 3, 1, 6, 7, 10, 11, 9],
         adcPins: [17],
@@ -89,6 +93,17 @@ const BOARD_PINS = {
         defaultI2C: { sda: 4, scl: 5 },
         defaultSPI: { clk: 14, mosi: 13, miso: 12, cs: 15 },
         defaultUART: { tx: 1, rx: 3 }
+    },
+    'esp32s3-poe-wifi': {
+        name: 'ESP32-S3 PoE WiFi',
+        image: '/static/img/chips/esp32-s3-devkitc-1.jpg',
+        leftPins: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21],
+        rightPins: [35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48],
+        adcPins: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+        touchPins: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+        defaultI2C: { sda: 8, scl: 9 },
+        defaultSPI: { clk: 12, mosi: 11, miso: 13, cs: 10 },
+        defaultUART: { tx: 43, rx: 44 }
     }
 };
 
