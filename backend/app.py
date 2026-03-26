@@ -903,7 +903,7 @@ async def get_device(device_name: str):
 
 
 async def fetch_ha_entities_for_device(device_name: str, integrations: list) -> list:
-    """Fetch Home Assistant entities for a device via MCP"""
+    """Fetch Home Assistant entities for a device via MCP - only entities belonging to this device"""
     entities = []
     
     if not HA_MCP_URL:
@@ -911,13 +911,14 @@ async def fetch_ha_entities_for_device(device_name: str, integrations: list) -> 
     
     try:
         async with aiohttp.ClientSession() as session:
+            # First, try to get entities with exact device name match
             payload = {
                 "jsonrpc": "2.0",
                 "id": 1,
                 "method": "tools/call",
                 "params": {
                     "name": "ha_search_entities",
-                    "arguments": {"query": device_name, "limit": 50}
+                    "arguments": {"query": device_name, "limit": 100}
                 }
             }
             headers = {
@@ -941,12 +942,46 @@ async def fetch_ha_entities_for_device(device_name: str, integrations: list) -> 
                                         result = json.loads(content['text'])
                                         if result.get('data', {}).get('success') and result.get('data', {}).get('results', []):
                                             for ent in result.get('data', {}).get('results', []):
-                                                entities.append({
-                                                    "entity_id": ent.get('entity_id', ''),
-                                                    "friendly_name": ent.get('friendly_name', ent.get('entity_id', '')),
-                                                    "state": ent.get('state', 'unknown'),
-                                                    "domain": ent.get('domain', ent.get('entity_id', '').split('.')[0] if '.' in ent.get('entity_id', '') else 'unknown')
-                                                })
+                                                entity_id = ent.get('entity_id', '')
+                                                friendly_name = ent.get('friendly_name', entity_id)
+                                                
+                                                # Filter: Only include entities that belong to this device
+                                                # Check if device name is in entity_id or friendly_name
+                                                entity_lower = entity_id.lower()
+                                                name_lower = device_name.lower().replace('-', '_').replace(' ', '_')
+                                                
+                                                # Match patterns: device_name_sensor, sensor.device_name_*, etc.
+                                                is_device_entity = (
+                                                    name_lower in entity_lower or
+                                                    name_lower.replace('_', '') in entity_lower.replace('_', '') or
+                                                    entity_lower.startswith(f"sensor.{name_lower}") or
+                                                    entity_lower.startswith(f"binary_sensor.{name_lower}") or
+                                                    entity_lower.startswith(f"switch.{name_lower}") or
+                                                    entity_lower.startswith(f"light.{name_lower}") or
+                                                    entity_lower.startswith(f"climate.{name_lower}") or
+                                                    entity_lower.startswith(f"cover.{name_lower}") or
+                                                    entity_lower.startswith(f"number.{name_lower}") or
+                                                    entity_lower.startswith(f"select.{name_lower}") or
+                                                    entity_lower.startswith(f"text.{name_lower}") or
+                                                    entity_lower.startswith(f"button.{name_lower}") or
+                                                    entity_lower.startswith(f"update.{name_lower}")
+                                                )
+                                                
+                                                # Also check if integration matches
+                                                if not is_device_entity and integrations:
+                                                    for integration in integrations:
+                                                        integration_lower = integration.lower().replace(' ', '_')
+                                                        if integration_lower in entity_lower or integration_lower in friendly_name.lower():
+                                                            is_device_entity = True
+                                                            break
+                                                
+                                                if is_device_entity:
+                                                    entities.append({
+                                                        "entity_id": entity_id,
+                                                        "friendly_name": friendly_name,
+                                                        "state": ent.get('state', 'unknown'),
+                                                        "domain": ent.get('domain', entity_id.split('.')[0] if '.' in entity_id else 'unknown')
+                                                    })
                             except:
                                 pass
     except Exception as e:
