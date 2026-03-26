@@ -1203,6 +1203,59 @@ ota_password: myotapassword"></textarea>
                         </div>
                     </div>
 
+                    <!-- System Status -->
+                    <div class="settings-section" id="section-system-status">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <h3 style="margin: 0;"><span class="material-icons">dns</span> System Status</h3>
+                            <button class="btn btn-outline btn-sm" onclick="refreshSystemStatus()" style="padding: 4px 12px;">
+                                <span class="material-icons" style="font-size: 16px;">refresh</span> Refresh
+                            </button>
+                        </div>
+                        <div class="settings-grid">
+                            <div class="settings-item">
+                                <label>Host IP</label>
+                                <span id="setting-host-ip" class="settings-value">192.168.1.64</span>
+                            </div>
+                            <div class="settings-item">
+                                <label>LXC Container</label>
+                                <span id="setting-lxc-container" class="settings-value">200 (esphome)</span>
+                            </div>
+                            <div class="settings-item">
+                                <label>ESPHome Container</label>
+                                <span id="setting-esphome-container" class="settings-value status-pending">
+                                    <span class="material-icons spinning">sync</span> Checking...
+                                </span>
+                            </div>
+                            <div class="settings-item">
+                                <label>ESPHome Version</label>
+                                <span id="setting-esphome-version" class="settings-value">-</span>
+                            </div>
+                            <div class="settings-item">
+                                <label>Remote Manager Container</label>
+                                <span id="setting-manager-container" class="settings-value status-pending">
+                                    <span class="material-icons spinning">sync</span> Checking...
+                                </span>
+                            </div>
+                            <div class="settings-item">
+                                <label>Web UI Port</label>
+                                <span id="setting-web-port" class="settings-value">8082</span>
+                            </div>
+                            <div class="settings-item">
+                                <label>ESPHome Dashboard Port</label>
+                                <span id="setting-dashboard-port" class="settings-value">6052</span>
+                            </div>
+                            <div class="settings-item">
+                                <label>Device Count</label>
+                                <span id="setting-device-count" class="settings-value">-</span>
+                            </div>
+                        </div>
+                        <div class="settings-status">
+                            <span id="system-status" class="status-indicator">
+                                <span class="material-icons">sync</span> Checking system status...
+                            </span>
+                        </div>
+                    </div>
+
                     <!-- MQTT Configuration -->
                     <div class="settings-section" id="section-mqtt">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
@@ -3022,6 +3075,9 @@ Device-specific instructions:
                 document.getElementById('device-id').textContent = health.device_id || 'esphome_remote_manager';
                 document.getElementById('discovery-enabled').textContent = health.mqtt_discovery_enabled ? 'Yes' : 'No';
                 
+                // Update system status
+                updateSystemStatus(health);
+                
                 // Load MQTT settings from environment or localStorage
                 const savedMqtt = localStorage.getItem('settings_mqtt');
                 if (savedMqtt) {
@@ -3063,6 +3119,76 @@ Device-specific instructions:
                 updateMQTTStatus('error', 'Error loading settings');
                 updateHAStatus('error', 'Error loading settings');
             }
+        }
+        
+        // Update system status display
+        function updateSystemStatus(health) {
+            const statusEl = document.getElementById('system-status');
+            const esphomeContainerEl = document.getElementById('setting-esphome-container');
+            const managerContainerEl = document.getElementById('setting-manager-container');
+            const esphomeVersionEl = document.getElementById('setting-esphome-version');
+            const deviceCountEl = document.getElementById('setting-device-count');
+            
+            // Update ESPHome version
+            if (esphomeVersionEl) {
+                esphomeVersionEl.textContent = health.esphome_version || '-';
+            }
+            
+            // Update device count
+            if (deviceCountEl) {
+                deviceCountEl.textContent = health.device_count || '0';
+            }
+            
+            if (health.status === 'healthy') {
+                if (statusEl) {
+                    statusEl.innerHTML = '<span class="material-icons" style="color: var(--success);">check_circle</span> System healthy';
+                    statusEl.style.color = 'var(--success)';
+                }
+                
+                if (esphomeContainerEl) {
+                    esphomeContainerEl.innerHTML = '<span class="material-icons" style="color: var(--success);">check_circle</span> Running';
+                    esphomeContainerEl.style.color = 'var(--success)';
+                }
+                
+                if (managerContainerEl) {
+                    managerContainerEl.innerHTML = '<span class="material-icons" style="color: var(--success);">check_circle</span> Running';
+                    managerContainerEl.style.color = 'var(--success)';
+                }
+            } else {
+                if (statusEl) {
+                    statusEl.innerHTML = '<span class="material-icons" style="color: var(--error);">error</span> System error: ' + (health.error || 'Unknown');
+                    statusEl.style.color = 'var(--error)';
+                }
+                
+                if (esphomeContainerEl) {
+                    esphomeContainerEl.innerHTML = '<span class="material-icons" style="color: var(--error);">error</span> Error';
+                    esphomeContainerEl.style.color = 'var(--error)';
+                }
+                
+                if (managerContainerEl) {
+                    managerContainerEl.innerHTML = '<span class="material-icons" style="color: var(--error);">error</span> Error';
+                    managerContainerEl.style.color = 'var(--error)';
+                }
+            }
+        }
+        
+        // Refresh system status
+        async function refreshSystemStatus() {
+            const statusEl = document.getElementById('system-status');
+            const esphomeContainerEl = document.getElementById('setting-esphome-container');
+            const managerContainerEl = document.getElementById('setting-manager-container');
+            
+            if (statusEl) {
+                statusEl.innerHTML = '<span class="material-icons spinning">sync</span> Checking...';
+            }
+            if (esphomeContainerEl) {
+                esphomeContainerEl.innerHTML = '<span class="material-icons spinning">sync</span> Checking...';
+            }
+            if (managerContainerEl) {
+                managerContainerEl.innerHTML = '<span class="material-icons spinning">sync</span> Checking...';
+            }
+            
+            await loadSettings();
         }
 
         // Template definitions with parameters
