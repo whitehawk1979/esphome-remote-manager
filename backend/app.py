@@ -752,8 +752,12 @@ async def list_devices():
     # Fetch HA devices in background (don't block main response)
     ha_devices_map = {}
     try:
-        # Use shorter timeout for HA devices
-        ha_devices = await asyncio.wait_for(get_ha_devices(), timeout=10)
+        # Use longer timeout for HA devices (MCP can be slow)
+        try:
+            ha_devices = await asyncio.wait_for(get_ha_devices(), timeout=120)
+        except asyncio.TimeoutError:
+            logger.warning("HA devices fetch timed out after 120s, returning devices without HA data")
+            ha_devices = {}
         if ha_devices.get("success") and ha_devices.get("devices"):
             for ha_device in ha_devices["devices"]:
                 # Map by name (try both - and _)
@@ -926,7 +930,7 @@ async def fetch_ha_entities_for_device(device_name: str, integrations: list) -> 
                 "Accept": "application/json, text/event-stream"
             }
             
-            async with session.post(HA_MCP_URL, json=payload, headers=headers, timeout=aiohttp.ClientTimeout(total=30)) as response:
+            async with session.post(HA_MCP_URL, json=payload, headers=headers, timeout=aiohttp.ClientTimeout(total=60)) as response:
                 if response.status == 200:
                     text = await response.text()
                     # Parse SSE format - skip ping and empty lines
@@ -994,14 +998,16 @@ async def fetch_ha_entities_for_device(device_name: str, integrations: list) -> 
 async def get_ha_devices():
     """Get all ESPHome devices from Home Assistant with online status"""
     try:
+        logger.info("Fetching HA devices via MCP...")
         async with aiohttp.ClientSession() as session:
+            # Single query for all esphome entities
             payload = {
                 "jsonrpc": "2.0",
                 "id": 1,
                 "method": "tools/call",
                 "params": {
                     "name": "ha_search_entities",
-                    "arguments": {"query": "esphome", "limit": 50}  # Reduced from 200 for faster response
+                    "arguments": {"query": "esphome", "limit": 200}
                 }
             }
             headers = {
@@ -1009,13 +1015,15 @@ async def get_ha_devices():
                 "Accept": "application/json, text/event-stream"
             }
             
-            async with session.post(HA_MCP_URL, json=payload, headers=headers, timeout=aiohttp.ClientTimeout(total=30)) as response:
+            async with session.post(HA_MCP_URL, json=payload, headers=headers, timeout=aiohttp.ClientTimeout(total=120)) as response:
                 if response.status == 200:
                     text = await response.text()
-                    # Parse SSE format - skip ping and empty lines
+                    logger.info(f"HA MCP response length: {len(text)} chars")
+                    
+                    # Parse SSE format
                     for line in text.split('\n'):
                         if line.startswith(':') or not line.strip():
-                            continue  # Skip ping and empty lines
+                            continue
                         if line.startswith('data: '):
                             try:
                                 data = json.loads(line[6:])
@@ -1023,10 +1031,13 @@ async def get_ha_devices():
                                     content = data['result']['content'][0]
                                     if 'text' in content:
                                         result = json.loads(content['text'])
-                                        if result.get('data', {}).get('success') and result.get('data', {}).get('results', []):
+                                        if result.get('data', {}).get('success'):
+                                            entities = result.get('data', {}).get('results', [])
+                                            logger.info(f"HA MCP returned {len(entities)} entities")
+                                            
                                             # Group entities by device
                                             devices = {}
-                                            for ent in result.get('data', {}).get('results', []):
+                                            for ent in entities:
                                                 entity_id = ent.get('entity_id', '')
                                                 friendly_name = ent.get('friendly_name', '')
                                                 state = ent.get('state', '')
@@ -1037,80 +1048,78 @@ async def get_ha_devices():
                                                     continue
                                                 
                                                 # Extract device name from entity_id
-                                                # e.g., "switch.esp32_s3_box_3_mute_responses" -> "esp32_s3_box_3"
-                                                # e.g., "update.esphome_web_30a7dc_firmware" -> "esphome_web_30a7dc"
+                                                # e.g., "sensor.multisensor_multisensor_wifi_signal" -> "multisensor"
+                                                # e.g., "light.adr1" -> "adr1"
                                                 parts = entity_id.split('.')
                                                 if len(parts) > 1:
-                                                    # Remove domain prefix and get device name
                                                     entity_name = parts[1]
                                                     
-                                                    # Try to extract device name
-                                                    # Common patterns: device_name_sensor, device_name_switch, etc.
-                                                    device_name = entity_name
+                                                    # Determine device name
+                                                    device_name = None
                                                     
-                                                    # Known device patterns - try to match entity_id to device names
+                                                    # Known ESPHome device patterns
                                                     known_devices = [
-                                                        'esp32_s3_box_3',
+                                                        'adr1', 'adr_1',
+                                                        'esp_radar2', 'esp_radar',
+                                                        'esp32_s3_box_3', 'esp32_s3box_3', 'esp32-s3box-3',
+                                                        'esp32s3_poe_wifi', 'esp32s3-poe-wifi',
                                                         'multisensor',
-                                                        'adr1',
-                                                        'esp_radar2',
-                                                        'test_compile',
-                                                        'esphome_web',
-                                                        'esp_radar'  # Added for esp_radar entities
+                                                        'test_compile', 'test-compile'
                                                     ]
                                                     
-                                                    # Try exact match first
+                                                    # Try known device match first
                                                     for known in known_devices:
-                                                        if known in entity_name:
-                                                            device_name = known
+                                                        normalized_entity = entity_name.replace('_', '-')
+                                                        normalized_known = known.replace('_', '-')
+                                                        if normalized_known in normalized_entity or normalized_entity.startswith(normalized_known):
+                                                            device_name = known.replace('-', '_')
                                                             break
-                                                    else:
-                                                        # Try matching entity_id patterns like "multisensor_multisensor_"
-                                                        # Extract the device name from patterns
+                                                    
+                                                    # Try device_device_entity pattern
+                                                    if not device_name:
                                                         entity_parts = entity_name.split('_')
-                                                        # Try first part for simple device names
-                                                        if len(entity_parts) >= 1:
-                                                            first_part = entity_parts[0]
-                                                            for known in known_devices:
-                                                                if known.startswith(first_part):
-                                                                    device_name = known
-                                                                    break
+                                                        if len(entity_parts) >= 2 and entity_parts[0] == entity_parts[1]:
+                                                            device_name = entity_parts[0]
                                                     
-                                                    if device_name not in devices:
-                                                        devices[device_name] = {
-                                                            "name": device_name,
-                                                            "friendly_name": friendly_name.split()[0] if friendly_name else device_name,
-                                                            "entities": [],
-                                                            "online": False,
-                                                            "firmware_version": None,
-                                                            "ip_address": None
-                                                        }
-                                                    
-                                                    devices[device_name]["entities"].append({
-                                                        "entity_id": entity_id,
-                                                        "friendly_name": friendly_name,
-                                                        "state": state,
-                                                        "domain": domain
-                                                    })
-                                                    
-                                                    # Check for online status
-                                                    if 'connected' in entity_id or 'status' in entity_id:
-                                                        if state in ['on', 'online', 'healthy']:
-                                                            devices[device_name]["online"] = True
-                                                    
-                                                    # Check for firmware version
-                                                    if 'version' in entity_id.lower() and 'esphome' not in entity_id.lower():
-                                                        if state not in ['unknown', 'unavailable']:
-                                                            devices[device_name]["firmware_version"] = state
-                                                    
-                                                    # Check for IP address
-                                                    if 'ip' in entity_id.lower() and state not in ['unknown', 'unavailable']:
-                                                        devices[device_name]["ip_address"] = state
+                                                    if device_name:
+                                                        if device_name not in devices:
+                                                            devices[device_name] = {
+                                                                "name": device_name,
+                                                                "friendly_name": friendly_name.split()[0] if friendly_name else device_name,
+                                                                "entities": [],
+                                                                "online": False,
+                                                                "firmware_version": None,
+                                                                "ip_address": None
+                                                            }
+                                                        
+                                                        devices[device_name]["entities"].append({
+                                                            "entity_id": entity_id,
+                                                            "friendly_name": friendly_name,
+                                                            "state": state,
+                                                            "domain": domain
+                                                        })
+                                                        
+                                                        # Check for online status
+                                                        if 'connected' in entity_id or 'status' in entity_id:
+                                                            if state in ['on', 'online', 'healthy']:
+                                                                devices[device_name]["online"] = True
+                                                        
+                                                        # Check for firmware version
+                                                        if 'version' in entity_id.lower() and 'esphome' not in entity_id.lower():
+                                                            if state not in ['unknown', 'unavailable']:
+                                                                devices[device_name]["firmware_version"] = state
+                                                        
+                                                        # Check for IP address
+                                                        if 'ip' in entity_id.lower() and state not in ['unknown', 'unavailable']:
+                                                            devices[device_name]["ip_address"] = state
                                             
+                                            logger.info(f"Grouped into {len(devices)} devices")
                                             return {"success": True, "devices": list(devices.values())}
                             except Exception as e:
                                 logger.error(f"Failed to parse HA response: {e}")
                                 continue
+    except asyncio.TimeoutError:
+        logger.warning("HA devices fetch timed out")
     except Exception as e:
         logger.error(f"Failed to get HA devices: {e}", exc_info=True)
     
