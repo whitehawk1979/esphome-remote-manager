@@ -1485,10 +1485,16 @@ ota_password: myotapassword"></textarea>
                 const response = await fetch(`${API_BASE}/api/health`);
                 const data = await response.json();
                 
-                document.getElementById('esphome-version').textContent = data.esphome_version || '-';
-                document.getElementById('agent-version').textContent = data.agent_version || '-';
-                document.getElementById('container-status').textContent = data.container_running ? 'Running' : 'Stopped';
-                document.getElementById('container-status').style.color = data.container_running ? 'var(--success)' : 'var(--error)';
+                const esphomeVersion = document.getElementById('esphome-version');
+                const agentVersion = document.getElementById('agent-version');
+                const containerStatus = document.getElementById('container-status');
+                
+                if (esphomeVersion) esphomeVersion.textContent = data.esphome_version || '-';
+                if (agentVersion) agentVersion.textContent = data.agent_version || '-';
+                if (containerStatus) {
+                    containerStatus.textContent = data.container_running ? 'Running' : 'Stopped';
+                    containerStatus.style.color = data.container_running ? 'var(--success)' : 'var(--error)';
+                }
                 
                 updateStatusBadge('healthy', `ESPHome ${data.esphome_version}`);
             } catch (e) {
@@ -1506,10 +1512,12 @@ ota_password: myotapassword"></textarea>
                 renderDevices();
                 updateDeviceSelects();
                 updateBoardFilter();
-                document.getElementById('device-count').textContent = devices.length;
+                const deviceCount = document.getElementById('device-count');
+                if (deviceCount) deviceCount.textContent = devices.length;
             } catch (e) {
                 console.error('Failed to fetch devices:', e);
-                document.getElementById('device-grid').innerHTML = '<div class="loading"><p style="color: var(--error)">Error loading devices</p></div>';
+                const deviceGrid = document.getElementById('device-grid');
+                if (deviceGrid) deviceGrid.innerHTML = '<div class="loading"><p style="color: var(--error)">Error loading devices</p></div>';
             }
         }
         
