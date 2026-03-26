@@ -9,6 +9,7 @@
     <!-- Monaco Editor -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
     <link rel="stylesheet" href="/static/css/chip.css">
+    <link rel="stylesheet" href="/static/css/chip-viz.css">
     <style>
         :root {
             --primary: #03a9f4;
@@ -1642,15 +1643,14 @@ ota_password: myotapassword"></textarea>
                 newModal.id = 'chip-modal';
                 newModal.className = 'modal';
                 newModal.innerHTML = `
-                    <div class="modal-content" style="max-width: 900px;">
+                    <div class="modal-content" style="max-width: 1200px; max-height: 90vh; overflow-y: auto;">
                         <div class="modal-header">
-                            <h2>Chip Visualization - ${deviceName}</h2>
+                            <h2><span class="material-icons" style="vertical-align: middle;">memory</span> Chip Visualization - ${deviceName}</h2>
                             <span class="close" onclick="closeChipModal()">&times;</span>
                         </div>
                         <div class="modal-body">
-                            <div id="chip-container" style="display: flex; flex-direction: column; align-items: center; gap: 16px;">
+                            <div id="chip-container" style="display: flex; flex-direction: column; gap: 16px;">
                                 <div id="pin-visualization" style="width: 100%;"></div>
-                                <div id="pin-legend" style="display: flex; gap: 16px; flex-wrap: wrap;"></div>
                             </div>
                         </div>
                     </div>
@@ -1659,14 +1659,29 @@ ota_password: myotapassword"></textarea>
             } else {
                 // Update title
                 const title = modal.querySelector('.modal-header h2');
-                if (title) title.textContent = `Chip Visualization - ${deviceName}`;
+                if (title) {
+                    title.innerHTML = `<span class="material-icons" style="vertical-align: middle;">memory</span> Chip Visualization - ${deviceName}`;
+                }
             }
             
             document.getElementById('chip-modal').style.display = 'block';
             
-            // Update chip visualization
-            if (typeof updateChipVisualization === 'function') {
-                await updateChipVisualization(platform, board);
+            // Get YAML content from editor
+            const yamlContent = typeof getEditorContent === 'function' ? getEditorContent() : document.getElementById('yaml-content')?.value || '';
+            
+            // Check if full chip visualization is available
+            if (typeof renderFullChipVisualization === 'function') {
+                const chipContainer = document.getElementById('pin-visualization');
+                if (chipContainer) {
+                    chipContainer.innerHTML = '';
+                    const vizElement = renderFullChipVisualization(deviceName, platform, board, yamlContent);
+                    chipContainer.appendChild(vizElement);
+                }
+            } else {
+                // Fallback to old visualization
+                if (typeof updateChipVisualization === 'function') {
+                    await updateChipVisualization(platform, board);
+                }
             }
         }
         
@@ -5178,6 +5193,7 @@ display:
     <!-- Monaco Editor -->
     <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
     <script src="/static/js/editor.js"></script>
+    <script src="/static/js/chip-viz.js"></script>
     <script>
         // Initialize Monaco Editor immediately after script load
         (function() {
@@ -5198,6 +5214,24 @@ display:
                 window.addEventListener('load', tryInit);
             }
         })();
+        
+        // Peripheral Modal Functions
+        function closePeripheralModal() {
+            const modal = document.getElementById('peripheral-modal');
+            if (modal) modal.style.display = 'none';
+        }
+        
+        function filterPeripherals(filter) {
+            if (typeof renderPeripheralList === 'function') {
+                renderPeripheralList(filter);
+            }
+        }
+        
+        function selectPeripheral(peripheralType) {
+            closePeripheralModal();
+            // TODO: Add peripheral to YAML
+            showToast('info', 'Peripheral Selected', `Adding ${peripheralType} to YAML - coming soon!`);
+        }
     </script>
 </body>
 </html>

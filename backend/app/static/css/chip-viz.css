@@ -1,0 +1,401 @@
+/* Chip Visualization Styles */
+
+.chip-visualization {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 16px;
+}
+
+/* DIP Chip Container */
+.dip-chip-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    background: var(--bg);
+    border-radius: 12px;
+}
+
+.dip-chip {
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    position: relative;
+    min-width: 300px;
+}
+
+.dip-chip-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: var(--primary);
+    border-radius: 8px 8px 0 0;
+}
+
+.dip-chip-header h3 {
+    margin: 0;
+    font-size: 14px;
+    color: white;
+}
+
+.dip-chip-header .chip-badge {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+}
+
+.dip-chip-pins {
+    display: flex;
+    gap: 0;
+}
+
+.dip-chip-left, .dip-chip-right {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 8px 4px;
+}
+
+.dip-chip-center {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    min-width: 120px;
+    background: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 10px,
+        rgba(255, 255, 255, 0.02) 10px,
+        rgba(255, 255, 255, 0.02) 20px
+    );
+}
+
+.dip-chip-center .chip-icon {
+    font-size: 48px;
+    color: var(--primary);
+    margin-bottom: 8px;
+}
+
+.dip-chip-center .chip-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.dip-chip-center .chip-stats {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+}
+
+/* Pin Row */
+.pin-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.pin-row:hover {
+    background: rgba(3, 169, 244, 0.1);
+}
+
+.pin-row.used {
+    background: rgba(3, 169, 244, 0.15);
+}
+
+.pin-row.input-only {
+    opacity: 0.7;
+}
+
+.pin-number {
+    font-size: 10px;
+    font-weight: 600;
+    min-width: 20px;
+    text-align: center;
+}
+
+.pin-label {
+    font-size: 10px;
+    color: var(--text-secondary);
+    min-width: 40px;
+}
+
+.pin-function {
+    font-size: 9px;
+    padding: 1px 4px;
+    border-radius: 3px;
+    background: var(--bg);
+}
+
+.pin-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-left: auto;
+}
+
+/* Pin Colors by Type */
+.pin-gpio { background: var(--primary); }
+.pin-i2c { background: #4caf50; }
+.pin-spi { background: #9c27b0; }
+.pin-uart { background: #2196f3; }
+.pin-adc { background: #ff9800; }
+.pin-dac { background: #e91e63; }
+.pin-touch { background: #00bcd4; }
+.pin-pwm { background: #ff5722; }
+
+/* Pin Usage Labels */
+.pin-usage {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 500;
+}
+
+.pin-usage.gpio { background: rgba(3, 169, 244, 0.2); color: var(--primary); }
+.pin-usage.i2c { background: rgba(76, 175, 80, 0.2); color: #4caf50; }
+.pin-usage.spi { background: rgba(156, 39, 176, 0.2); color: #9c27b0; }
+.pin-usage.uart { background: rgba(33, 150, 243, 0.2); color: #2196f3; }
+
+/* Peripheral Section */
+.peripheral-section {
+    background: var(--card-bg);
+    border-radius: 8px;
+    padding: 12px;
+    margin-top: 16px;
+}
+
+.peripheral-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.peripheral-header h4 {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.peripheral-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+}
+
+/* Peripheral Card */
+.peripheral-card {
+    background: var(--bg);
+    border-radius: 8px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    transition: all 0.2s;
+}
+
+.peripheral-card:hover {
+    border-color: var(--primary);
+    box-shadow: 0 2px 8px rgba(3, 169, 244, 0.1);
+}
+
+.peripheral-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.peripheral-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+}
+
+.peripheral-icon.sensor { background: rgba(76, 175, 80, 0.2); color: #4caf50; }
+.peripheral-icon.actuator { background: rgba(255, 152, 0, 0.2); color: #ff9800; }
+.peripheral-icon.display { background: rgba(33, 150, 243, 0.2); color: #2196f3; }
+.peripheral-icon.input { background: rgba(156, 39, 176, 0.2); color: #9c27b0; }
+.peripheral-icon.communication { background: rgba(0, 188, 212, 0.2); color: #00bcd4; }
+.peripheral-icon.power { background: rgba(233, 30, 99, 0.2); color: #e91e63; }
+
+.peripheral-name {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.peripheral-type {
+    font-size: 10px;
+    color: var(--text-secondary);
+}
+
+.peripheral-pins {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 8px;
+}
+
+.peripheral-pin {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    background: var(--bg-secondary);
+}
+
+.peripheral-pin i2c { border-left: 3px solid #4caf50; }
+.peripheral-pin spi { border-left: 3px solid #9c27b0; }
+.peripheral-pin uart { border-left: 3px solid #2196f3; }
+.peripheral-pin gpio { border-left: 3px solid var(--primary); }
+
+/* Connection Diagram */
+.connection-diagram {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    background: var(--bg);
+    border-radius: 8px;
+}
+
+.connection-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.connection-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px;
+    background: var(--card-bg);
+    border-radius: 8px;
+    min-width: 80px;
+}
+
+.connection-node.chip {
+    background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%);
+    color: white;
+}
+
+.connection-node.peripheral {
+    border: 2px solid var(--primary);
+}
+
+.connection-line {
+    flex: 1;
+    height: 2px;
+    background: var(--border);
+    position: relative;
+}
+
+.connection-line::before {
+    content: attr(data-pins);
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    color: var(--text-secondary);
+    background: var(--bg);
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+/* Legend */
+.chip-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 12px;
+    background: var(--bg);
+    border-radius: 8px;
+    margin-top: 12px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+}
+
+.legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+/* Statistics */
+.chip-statistics {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.stat-card {
+    background: var(--card-bg);
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+}
+
+.stat-value {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--primary);
+}
+
+.stat-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .dip-chip {
+        min-width: 100%;
+    }
+    
+    .dip-chip-pins {
+        flex-direction: column;
+    }
+    
+    .dip-chip-left, .dip-chip-right {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+    
+    .peripheral-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .chip-statistics {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
