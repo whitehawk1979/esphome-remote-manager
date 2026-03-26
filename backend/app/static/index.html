@@ -6,6 +6,9 @@
     <title>ESPHome Remote Manager</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <!-- Monaco Editor -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
+    <link rel="stylesheet" href="/static/css/chip.css">
     <style>
         :root {
             --primary: #03a9f4;
@@ -211,6 +214,39 @@
         .status-dot.online { background: var(--success); }
         .status-dot.offline { background: var(--error); }
         .status-dot.unknown { background: var(--secondary); }
+        .status-dot.configured { background: var(--primary); }
+        .status-dot.compiling { background: var(--warning); animation: pulse 1s infinite; }
+        .status-dot.error { background: var(--error); }
+        
+        .compile-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            margin-left: 8px;
+        }
+        
+        .compile-indicator.compiling {
+            background: rgba(var(--warning-rgb, 255, 152, 0), 0.1);
+            color: var(--warning);
+        }
+        
+        .compile-indicator.success {
+            background: rgba(var(--success-rgb, 76, 175, 80), 0.1);
+            color: var(--success);
+        }
+        
+        .compile-indicator.error {
+            background: rgba(var(--error-rgb, 244, 67, 54), 0.1);
+            color: var(--error);
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
         
         .device-actions {
             display: flex;
@@ -618,6 +654,49 @@
             <div class="card">
                 <div class="card-header">
                     <h2><span class="material-icons">devices</span> ESPHome Devices</h2>
+                    <div class="filter-toolbar" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                        <div class="filter-group" style="display: flex; align-items: center; gap: 8px;">
+                            <label style="font-size: 12px; color: var(--text-secondary);">Search:</label>
+                            <input type="text" id="device-search" placeholder="Search devices..." 
+                                style="padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 13px; width: 180px;"
+                                oninput="filterDevices()">
+                        </div>
+                        <div class="filter-group" style="display: flex; align-items: center; gap: 8px;">
+                            <label style="font-size: 12px; color: var(--text-secondary);">Platform:</label>
+                            <select id="platform-filter" 
+                                style="padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 13px;"
+                                onchange="filterDevices()">
+                                <option value="">All Platforms</option>
+                                <option value="ESP32">ESP32</option>
+                                <option value="ESP8266">ESP8266</option>
+                                <option value="RP2040">RP2040</option>
+                                <option value="HOST">Host</option>
+                            </select>
+                        </div>
+                        <div class="filter-group" style="display: flex; align-items: center; gap: 8px;">
+                            <label style="font-size: 12px; color: var(--text-secondary);">Status:</label>
+                            <select id="status-filter" 
+                                style="padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 13px;"
+                                onchange="filterDevices()">
+                                <option value="">All Status</option>
+                                <option value="online">Online</option>
+                                <option value="configured">Configured</option>
+                                <option value="offline">Offline</option>
+                            </select>
+                        </div>
+                        <div class="filter-group" style="display: flex; align-items: center; gap: 8px;">
+                            <label style="font-size: 12px; color: var(--text-secondary);">Board:</label>
+                            <select id="board-filter" 
+                                style="padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 13px; min-width: 150px;"
+                                onchange="filterDevices()">
+                                <option value="">All Boards</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-outline" onclick="clearFilters()" style="font-size: 12px;">
+                            <span class="material-icons" style="font-size: 16px;">filter_alt_off</span>
+                            Clear
+                        </button>
+                    </div>
                 </div>
                 <div class="card-body">
                     <div class="device-grid" id="device-grid">
@@ -674,6 +753,14 @@
                             <span class="material-icons">save</span>
                             Save
                         </button>
+                        <button class="btn btn-primary" onclick="compileCurrentDevice()" id="yaml-compile-btn" style="display: none;">
+                            <span class="material-icons">build</span>
+                            Compile
+                        </button>
+                        <button class="btn btn-danger" onclick="cancelCurrentCompile()" id="yaml-cancel-btn" style="display: none;">
+                            <span class="material-icons">cancel</span>
+                            Cancel
+                        </button>
                         <button class="btn btn-warning" onclick="uploadFromYaml()" id="yaml-upload-btn" style="display: none;">
                             <span class="material-icons">upload</span>
                             Upload
@@ -708,7 +795,13 @@
                         <div class="yaml-panel" style="display: flex; flex-direction: column;">
                             <h4 style="margin-bottom: 8px;">Configuration</h4>
                             <div style="position: relative; flex: 1;">
-                                <textarea id="yaml-content" class="yaml-textarea" placeholder="Select a device to load configuration...&#10;&#10;Or use templates from the sidebar to get started." style="height: 100%; min-height: 400px;"></textarea>
+                                <!-- YAML Editor Container (Monaco) -->
+                                <div id="yaml-editor-container" style="height: 100%; min-height: 400px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; display: none;"></div>
+                                <!-- Fallback textarea (shown by default, hidden when Monaco loads) -->
+                                <textarea id="yaml-content" class="yaml-textarea" placeholder="Select a device to load configuration...&#10;&#10;Or use templates from the sidebar to get started." style="height: 100%; min-height: 400px; width: 100%; font-family: 'Roboto Mono', monospace; font-size: 13px; padding: 12px; border: 1px solid var(--border); border-radius: 8px; resize: vertical;"></textarea>
+                                <!-- Validation Status -->
+                                <div id="validation-status" style="margin-top: 8px; padding: 8px; border-radius: 6px; font-size: 13px;"></div>
+                                <div id="validation-warnings" style="margin-top: 4px;"></div>
                             </div>
                             <div style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
                                 <button class="btn btn-outline" onclick="insertTemplate('sensor')" title="Add sensor">
@@ -740,6 +833,8 @@
                             <div id="yaml-device-info" style="margin-bottom: 16px;">
                                 <div style="color: var(--text-secondary); font-size: 13px;">Select a device to see details</div>
                             </div>
+                            <!-- Pin Visualization -->
+                            <div id="pin-visualization" style="margin-bottom: 16px;"></div>
                             <h4 style="margin-bottom: 12px;">Integrations</h4>
                             <div id="yaml-integrations" style="margin-bottom: 16px;">
                                 <div style="color: var(--text-secondary); font-size: 13px;">-</div>
@@ -756,7 +851,7 @@
         
         <!-- New Device Modal -->
         <div class="modal-overlay" id="new-device-modal">
-            <div class="modal" style="max-width: 500px;">
+            <div class="modal" style="max-width: 600px;">
                 <div class="modal-header">
                     <h3><span class="material-icons">add_circle</span> New Device</h3>
                     <button class="modal-close" onclick="closeNewDeviceModal()">
@@ -764,7 +859,18 @@
                     </button>
                 </div>
                 <div class="modal-body">
-                    <div style="display: flex; flex-direction: column; gap: 16px;">
+                    <!-- Tabs -->
+                    <div style="display: flex; gap: 4px; margin-bottom: 16px; background: var(--bg); padding: 4px; border-radius: 8px;">
+                        <button id="tab-create" onclick="switchNewDeviceTab('create')" style="flex: 1; padding: 10px; border: none; border-radius: 6px; background: var(--primary); color: white; font-weight: 500; cursor: pointer;">
+                            <span class="material-icons" style="font-size: 16px; vertical-align: middle;">add</span> Create New
+                        </button>
+                        <button id="tab-import" onclick="switchNewDeviceTab('import')" style="flex: 1; padding: 10px; border: none; border-radius: 6px; background: transparent; color: var(--text-secondary); font-weight: 500; cursor: pointer;">
+                            <span class="material-icons" style="font-size: 16px; vertical-align: middle;">upload_file</span> Import YAML
+                        </button>
+                    </div>
+                    
+                    <!-- Create Tab Content -->
+                    <div id="new-device-create-content" style="display: flex; flex-direction: column; gap: 16px;">
                         <div>
                             <label style="display: block; margin-bottom: 4px; font-weight: 500;">Device Name</label>
                             <input type="text" id="new-device-name" placeholder="e.g., living_room_light" style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px;">
@@ -775,24 +881,25 @@
                                 <option value="">Select platform...</option>
                                 <optgroup label="ESP32 Series">
                                     <option value="ESP32">ESP32 (Original)</option>
-                                    <option value="ESP32-S2">ESP32-S2</option>
-                                    <option value="ESP32-S3">ESP32-S3</option>
-                                    <option value="ESP32-C3">ESP32-C3 (RISC-V)</option>
-                                    <option value="ESP32-C6">ESP32-C6</option>
-                                    <option value="ESP32-H2">ESP32-H2</option>
-                                    <option value="ESP32-P4">ESP32-P4</option>
+                                    <option value="ESP32-S2">ESP32-S2 (USB Native)</option>
+                                    <option value="ESP32-S3">ESP32-S3 (AI Acceleration)</option>
+                                    <option value="ESP32-C3">ESP32-C3 (RISC-V, Low Cost)</option>
+                                    <option value="ESP32-C6">ESP32-C6 (RISC-V, Zigbee)</option>
+                                    <option value="ESP32-H2">ESP32-H2 (Thread/Zigbee)</option>
+                                    <option value="ESP32-P4">ESP32-P4 (High Performance)</option>
                                 </optgroup>
                                 <optgroup label="ESP8266 Series">
-                                    <option value="ESP8266">ESP8266 (ESP-01/07/12/14)</option>
-                                </optgroup>
-                                <optgroup label="Arduino Compatible">
-                                    <option value="arduino_nano">Arduino Nano</option>
-                                    <option value="arduino_uno">Arduino Uno</option>
-                                    <option value="arduino_mega">Arduino Mega</option>
-                                    <option value="arduino_leonardo">Arduino Leonardo</option>
+                                    <option value="ESP8266">ESP8266 (WiFi Classic)</option>
                                 </optgroup>
                                 <optgroup label="RP2040 Boards">
-                                    <option value="rp2040">Raspberry Pi Pico (RP2040)</option>
+                                    <option value="RP2040">Raspberry Pi Pico (RP2040)</option>
+                                </optgroup>
+                                <optgroup label="Beken (Tuya)">
+                                    <option value="BK7231N">BK7231N</option>
+                                    <option value="BK7231T">BK7231T</option>
+                                </optgroup>
+                                <optgroup label="Realtek AmebaZ">
+                                    <option value="RTL87xx">RTL8710/RTL8711</option>
                                 </optgroup>
                             </select>
                         </div>
@@ -821,12 +928,62 @@
                             </label>
                         </div>
                     </div>
+                    
+                    <!-- Import Tab Content -->
+                    <div id="new-device-import-content" style="display: none; flex-direction: column; gap: 16px;">
+                        <div style="background: rgba(3, 169, 244, 0.1); padding: 12px; border-radius: 8px; border-left: 3px solid var(--primary);">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                                <span class="material-icons" style="color: var(--primary);">info</span>
+                                <strong>YAML Import</strong>
+                            </div>
+                            <p style="font-size: 13px; color: var(--text-secondary); margin: 0;">
+                                Paste your ESPHome YAML configuration or upload a file. The device will be created automatically.
+                            </p>
+                        </div>
+                        
+                        <!-- File Upload -->
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <input type="file" id="yaml-file-input" accept=".yaml,.yml" style="display: none;" onchange="handleYamlFileUpload(event)">
+                            <button class="btn btn-outline" onclick="document.getElementById('yaml-file-input').click()" style="flex: 1;">
+                                <span class="material-icons">folder_open</span>
+                                Browse YAML File
+                            </button>
+                            <span id="selected-file-name" style="font-size: 12px; color: var(--text-secondary);"></span>
+                        </div>
+                        
+                        <!-- YAML Textarea -->
+                        <div>
+                            <label style="display: block; margin-bottom: 4px; font-weight: 500;">YAML Configuration</label>
+                            <textarea id="import-yaml-content" placeholder="esphome:
+  name: my-device
+  friendly_name: My Device
+
+esp32:
+  board: esp32dev
+
+# ... paste your config here ..." style="width: 100%; min-height: 300px; padding: 12px; border: 1px solid var(--border); border-radius: 6px; font-family: 'Roboto Mono', monospace; font-size: 13px; resize: vertical;"></textarea>
+                        </div>
+                        <div id="import-preview" style="display: none; background: var(--bg); padding: 12px; border-radius: 8px;">
+                            <h4 style="margin-bottom: 8px; font-size: 13px;">Detected Configuration:</h4>
+                            <div id="import-detected-info" style="font-size: 13px;"></div>
+                        </div>
+                        <div>
+                            <button class="btn btn-outline" onclick="parseImportedYaml()" style="width: 100%;">
+                                <span class="material-icons">search</span>
+                                Validate & Parse YAML
+                            </button>
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer" style="padding: 16px; display: flex; justify-content: flex-end; gap: 8px;">
                     <button class="btn btn-outline" onclick="closeNewDeviceModal()">Cancel</button>
-                    <button class="btn btn-primary" onclick="createNewDevice()">
+                    <button id="btn-create-device" class="btn btn-primary" onclick="createNewDevice()">
                         <span class="material-icons">add</span>
                         Create
+                    </button>
+                    <button id="btn-import-device" class="btn btn-primary" onclick="importYamlDevice()" style="display: none;">
+                        <span class="material-icons">upload_file</span>
+                        Import
                     </button>
                 </div>
             </div>
@@ -1176,9 +1333,87 @@ ota_password: myotapassword"></textarea>
         // Version: 20260324183757
         console.log("ESPHome Remote Manager v1.2.0 - 20260324183757");
         // Version: 1774376468
-        const API_BASE = window.location.origin;
+        // Make API_BASE global for editor.js
+        window.API_BASE = window.location.origin;
+        const API_BASE = window.API_BASE;
         let devices = [];
         let currentYaml = '';
+        
+        // Filter devices
+        function filterDevices() {
+            const searchTerm = document.getElementById('device-search').value.toLowerCase();
+            const platformFilter = document.getElementById('platform-filter').value;
+            const statusFilter = document.getElementById('status-filter').value;
+            const boardFilter = document.getElementById('board-filter').value;
+            
+            const filteredDevices = devices.filter(device => {
+                // Search filter
+                const matchesSearch = !searchTerm || 
+                    device.name.toLowerCase().includes(searchTerm) ||
+                    (device.platform || '').toLowerCase().includes(searchTerm) ||
+                    (device.board || '').toLowerCase().includes(searchTerm);
+                
+                // Platform filter
+                const matchesPlatform = !platformFilter || 
+                    (device.platform || '').toUpperCase() === platformFilter;
+                
+                // Status filter
+                const matchesStatus = !statusFilter || 
+                    (device.ha_online ? 'online' : (device.status || 'configured')) === statusFilter;
+                
+                // Board filter
+                const matchesBoard = !boardFilter || 
+                    (device.board || '') === boardFilter;
+                
+                return matchesSearch && matchesPlatform && matchesStatus && matchesBoard;
+            });
+            
+            renderFilteredDevices(filteredDevices);
+        }
+        
+        // Render filtered devices
+        function renderFilteredDevices(filteredDevices) {
+            const container = document.getElementById('device-grid');
+            
+            if (filteredDevices.length === 0) {
+                container.innerHTML = '<div class="loading"><p>No devices match your filters</p></div>';
+                return;
+            }
+            
+            // Reuse renderDevices logic but with filtered list
+            const originalDevices = devices;
+            devices = filteredDevices;
+            renderDevices();
+            devices = originalDevices;
+        }
+        
+        // Clear all filters
+        function clearFilters() {
+            document.getElementById('device-search').value = '';
+            document.getElementById('platform-filter').value = '';
+            document.getElementById('status-filter').value = '';
+            document.getElementById('board-filter').value = '';
+            renderDevices();
+        }
+        
+        // Update board filter options based on devices
+        function updateBoardFilter() {
+            const boardFilter = document.getElementById('board-filter');
+            const boards = new Set();
+            
+            devices.forEach(device => {
+                if (device.board && device.board !== '-' && device.board !== 'null') {
+                    boards.add(device.board);
+                }
+            });
+            
+            // Sort boards
+            const sortedBoards = Array.from(boards).sort();
+            
+            // Update select
+            boardFilter.innerHTML = '<option value="">All Boards</option>' + 
+                sortedBoards.map(board => `<option value="${board}">${board}</option>`).join('');
+        }
         
         // Tab handling
         document.querySelectorAll('.tab').forEach(tab => {
@@ -1216,6 +1451,7 @@ ota_password: myotapassword"></textarea>
                 devices = data.devices || [];
                 renderDevices();
                 updateDeviceSelects();
+                updateBoardFilter();
                 document.getElementById('device-count').textContent = devices.length;
             } catch (e) {
                 console.error('Failed to fetch devices:', e);
@@ -1224,6 +1460,9 @@ ota_password: myotapassword"></textarea>
         }
         
         // Render Devices
+        // Compilation status tracking
+        let compilationStatus = {};
+        
         function renderDevices() {
             const container = document.getElementById('device-grid');
             
@@ -1232,206 +1471,299 @@ ota_password: myotapassword"></textarea>
                 return;
             }
             
-            container.innerHTML = devices.map(device => `
-                <div class="device-card" onclick="showDeviceDetails('${device.name}')">
-                    <div class="device-header">
-                        <h3>${device.name}</h3>
-                        <div class="platform">${device.platform || 'Unknown'}</div>
+            container.innerHTML = devices.map(function(device) {
+                const haOnline = device.ha_online || false;
+                const haEntities = device.ha_entities || [];
+                const haFirmware = device.ha_firmware;
+                const status = haOnline ? 'online' : (device.status || 'configured');
+                const platform = device.platform || 'Unknown';
+                const board = device.board || '-';
+                const compStatus = compilationStatus[device.name] || { status: 'idle', progress: 0, message: '' };
+                
+                var html = '<div class="device-card" onclick="showDeviceDetails(\'' + device.name + '\')" data-status="' + status + '" data-device="' + device.name + '">';
+                html += '<div class="device-header"><h3>' + device.name + '</h3>';
+                html += '<div class="device-status" style="position: relative;">';
+                
+                // Main status dot
+                html += '<div class="status-dot ' + status + '"></div>';
+                html += '<span>' + (haOnline ? 'Online' : (status === 'configured' ? 'Not Installed' : status)) + '</span>';
+                
+                // Compilation status indicator
+                if (compStatus.status === 'compiling') {
+                    html += '<div class="compile-indicator compiling" title="' + (compStatus.message || 'Compiling...') + '">';
+                    html += '<span class="material-icons" style="animation: spin 1s linear infinite; font-size: 14px;">refresh</span>';
+                    html += '<span style="font-size: 11px;">' + compStatus.progress + '%</span>';
+                    html += '</div>';
+                } else if (compStatus.status === 'compiled') {
+                    html += '<div class="compile-indicator success" title="Compilation successful">';
+                    html += '<span class="material-icons" style="font-size: 14px; color: var(--success);">check_circle</span>';
+                    html += '</div>';
+                } else if (compStatus.status === 'error') {
+                    html += '<div class="compile-indicator error" title="' + (compStatus.message || 'Compilation failed') + '">';
+                    html += '<span class="material-icons" style="font-size: 14px; color: var(--error);">error</span>';
+                    html += '</div>';
+                }
+                
+                if (haFirmware) {
+                    html += '<span style="margin-left: 8px; font-size: 11px; color: var(--success);">v' + haFirmware + '</span>';
+                }
+                if (haEntities.length > 0) {
+                    html += '<span style="margin-left: 8px; font-size: 11px;">(' + haEntities.length + ' entities)</span>';
+                }
+                html += '</div></div>';
+                
+                // Progress bar (visible during compilation)
+                if (compStatus.status === 'compiling') {
+                    html += '<div class="progress-bar-container" style="margin: 8px 0; background: var(--border); border-radius: 4px; height: 4px;">';
+                    html += '<div class="progress-bar-fill" style="background: var(--primary); height: 100%; width: ' + compStatus.progress + '%; transition: width 0.3s;"></div>';
+                    html += '</div>';
+                }
+                
+                html += '<div class="device-body">';
+                html += '<div class="device-info">';
+                html += '<div class="device-info-item"><label>Platform</label><span>' + platform + '</span></div>';
+                html += '<div class="device-info-item"><label>Board</label><span>' + board + '</span></div>';
+                html += '<div class="device-info-item"><label>Firmware</label><span>' + (device.deployed_version || 'Not Installed') + '</span></div>';
+                html += '<div class="device-info-item"><label>Latest</label><span>' + (device.current_version || '-') + '</span></div>';
+                html += '</div>';
+                
+                // Chip preview (if platform and board known)
+                if (platform !== 'Unknown' && board !== '-') {
+                    html += '<div class="chip-preview" onclick="event.stopPropagation(); showChipVisualization(\'' + device.name + '\', \'' + platform + '\', \'' + board + '\')" style="cursor: pointer; margin: 8px 0; padding: 8px; background: var(--bg); border-radius: 8px; border: 1px solid var(--border); display: flex; align-items: center; gap: 8px;">';
+                    html += '<span class="material-icons" style="font-size: 20px; color: var(--primary);">memory</span>';
+                    html += '<span style="font-size: 12px; color: var(--text-secondary);">Click to view chip pins</span>';
+                    html += '</div>';
+                }
+                
+                html += '<div class="device-status">';
+                
+                // Show compile status if active
+                if (compStatus.status === 'compiling' || compStatus.status === 'queued') {
+                    html += '<div class="compile-status" style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">';
+                    if (compStatus.status === 'queued') {
+                        html += '<span class="material-icons" style="color: var(--warning);">schedule</span>';
+                        html += '<span style="font-size: 12px; color: var(--text-secondary);">Queued (position: ' + (compStatus.queue_position || 0) + ')</span>';
+                    } else {
+                        html += '<div class="compile-indicator compiling" title="' + (compStatus.message || 'Compiling...') + '">';
+                        html += '<span class="material-icons spinning" style="font-size: 16px;">refresh</span>';
+                        html += '<span style="font-size: 12px;">' + (compStatus.progress || 0) + '%</span>';
+                        html += '</div>';
+                        html += '<button class="btn btn-danger" onclick="event.stopPropagation(); cancelCompile(\'' + device.name + '\', \'' + (compStatus.task_id || '') + '\')" style="font-size: 11px; padding: 4px 8px;">';
+                        html += '<span class="material-icons" style="font-size: 14px;">cancel</span>Cancel</button>';
+                    }
+                    html += '</div>';
+                } else if (compStatus.status === 'compiled') {
+                    html += '<div class="compile-status" style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">';
+                    html += '<div class="compile-indicator success" title="Compilation successful">';
+                    html += '<span class="material-icons" style="font-size: 16px; color: var(--success);">check_circle</span>';
+                    html += '<span style="font-size: 12px; color: var(--success);">Compiled</span>';
+                    html += '</div></div>';
+                } else if (compStatus.status === 'error' || compStatus.status === 'cancelled') {
+                    html += '<div class="compile-status" style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">';
+                    html += '<div class="compile-indicator error" title="' + (compStatus.message || compStatus.status) + '">';
+                    html += '<span class="material-icons" style="font-size: 16px; color: var(--error);">error</span>';
+                    html += '<span style="font-size: 12px; color: var(--error);">' + (compStatus.status === 'cancelled' ? 'Cancelled' : 'Failed') + '</span>';
+                    html += '</div></div>';
+                }
+                
+                html += '<div class="status-dot ' + (device.status || 'unknown') + '"></div>';
+                html += '<span>' + (device.status || 'Unknown') + '</span>';
+                html += '</div>';
+                html += '<div class="device-actions">';
+                html += '<button class="btn btn-primary" onclick="event.stopPropagation(); compileDevice(\'' + device.name + '\')"><span class="material-icons">build</span>Compile</button>';
+                html += '<button class="btn btn-success" onclick="event.stopPropagation(); showUploadModal(\'' + device.name + '\')"><span class="material-icons">system_update</span>Update</button>';
+                html += '<button class="btn btn-outline" onclick="event.stopPropagation(); downloadFirmware(\'' + device.name + '\')"><span class="material-icons">download</span>Download</button>';
+                html += '<button class="btn btn-outline" onclick="event.stopPropagation(); showYaml(\'' + device.name + '\')"><span class="material-icons">code</span>YAML</button>';
+                html += '<button class="btn btn-danger" onclick="event.stopPropagation(); deleteDevice(\'' + device.name + '\')" style="background: var(--error); color: white;"><span class="material-icons">delete</span>Delete</button>';
+                html += '</div></div></div>';
+                return html;
+            }).join('');
+        }
+        
+        // Show chip visualization in modal
+        async function showChipVisualization(deviceName, platform, board) {
+            const modal = document.getElementById('chip-modal');
+            if (!modal) {
+                // Create modal if not exists
+                const newModal = document.createElement('div');
+                newModal.id = 'chip-modal';
+                newModal.className = 'modal';
+                newModal.innerHTML = `
+                    <div class="modal-content" style="max-width: 900px;">
+                        <div class="modal-header">
+                            <h2>Chip Visualization - ${deviceName}</h2>
+                            <span class="close" onclick="closeChipModal()">&times;</span>
+                        </div>
+                        <div class="modal-body">
+                            <div id="chip-container" style="display: flex; flex-direction: column; align-items: center; gap: 16px;">
+                                <div id="pin-visualization" style="width: 100%;"></div>
+                                <div id="pin-legend" style="display: flex; gap: 16px; flex-wrap: wrap;"></div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="device-body">
-                        <div class="device-info">
-                            <div class="device-info-item">
-                                <label>Firmware</label>
-                                <span style="${device.update_available ? 'color: var(--warning); font-weight: 600;' : ''}">${device.deployed_version || '-'}</span>
-                            </div>
-                            <div class="device-info-item">
-                                <label>Latest</label>
-                                <span style="${device.update_available ? 'color: var(--success); font-weight: 600;' : ''}">${device.current_version || '-'}</span>
-                            </div>
-                            <div class="device-info-item">
-                                <label>Address</label>
-                                <span>${device.address || '-'}</span>
-                            </div>
-                            <div class="device-info-item">
-                                <label>Port</label>
-                                <span>${device.web_port || '-'}</span>
-                            </div>
-                        </div>
-                        <div class="device-status">
-                            <div class="status-dot ${device.status || 'unknown'}"></div>
-                            <span>${device.status || 'Unknown'}</span>
-                            ${device.update_available ? `<span class="update-badge" style="margin-left: auto; background: var(--warning); color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500;">Update Available</span>` : ''}
-                            ${device.ha_entities && device.ha_entities.length > 0 ? `<span style="margin-left:${device.update_available ? '8px' : 'auto'}">(${device.ha_entities.length} entities)</span>` : ''}
-                        </div>
-                        <div class="device-actions">
-                            <button class="btn btn-primary" onclick="event.stopPropagation(); compileDevice('${device.name}')">
-                                <span class="material-icons">build</span>
-                                Compile
-                            </button>
-                            <button class="btn btn-success" onclick="event.stopPropagation(); showUploadModal('${device.name}')">
-                                <span class="material-icons">system_update</span>
-                                Update
-                            </button>
-                            <button class="btn btn-outline" onclick="event.stopPropagation(); downloadFirmware('${device.name}')">
-                                <span class="material-icons">download</span>
-                                Download
-                            </button>
-                            <button class="btn btn-outline" onclick="event.stopPropagation(); showYaml('${device.name}')">
-                                <span class="material-icons">code</span>
-                                YAML
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
+                `;
+                document.body.appendChild(newModal);
+            } else {
+                // Update title
+                const title = modal.querySelector('.modal-header h2');
+                if (title) title.textContent = `Chip Visualization - ${deviceName}`;
+            }
+            
+            document.getElementById('chip-modal').style.display = 'block';
+            
+            // Update chip visualization
+            if (typeof updateChipVisualization === 'function') {
+                await updateChipVisualization(platform, board);
+            }
+        }
+        
+        function closeChipModal() {
+            const modal = document.getElementById('chip-modal');
+            if (modal) modal.style.display = 'none';
+        }
+        
+        // Cancel compile
+        async function cancelCompile(deviceName, taskId) {
+            if (!taskId) {
+                showToast('error', 'No Active Compile', 'No compile task to cancel');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/compile/${taskId}/cancel`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showToast('success', 'Compile Cancelled', `Compile for ${deviceName} has been cancelled`);
+                    // Clear compile status
+                    delete compilationStatus[deviceName];
+                    renderDevices();
+                } else {
+                    showToast('error', 'Cancel Failed', data.error || 'Failed to cancel compile');
+                }
+            } catch (error) {
+                console.error('Failed to cancel compile:', error);
+                showToast('error', 'Cancel Failed', 'Failed to cancel compile');
+            }
+        }
+        
+        // Current device for YAML editor
+        let currentDeviceName = null;
+        let currentCompileTaskId = null;
+        
+        // Compile current device from YAML editor
+        async function compileCurrentDevice() {
+            if (!currentDeviceName) {
+                showToast('error', 'No Device Selected', 'Please select a device first');
+                return;
+            }
+            
+            // Show cancel button, hide compile button
+            const compileBtn = document.getElementById('yaml-compile-btn');
+            const cancelBtn = document.getElementById('yaml-cancel-btn');
+            if (compileBtn) compileBtn.style.display = 'none';
+            if (cancelBtn) cancelBtn.style.display = 'inline-flex';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/compile/${currentDeviceName}/async`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentCompileTaskId = data.task_id;
+                    compilationStatus[currentDeviceName] = {
+                        status: 'queued',
+                        progress: 0,
+                        task_id: data.task_id,
+                        queue_position: data.queue_position
+                    };
+                    showToast('success', 'Compile Started', `Compile queued for ${currentDeviceName}`);
+                } else {
+                    showToast('error', 'Compile Failed', data.error || 'Failed to start compile');
+                    if (compileBtn) compileBtn.style.display = 'inline-flex';
+                    if (cancelBtn) cancelBtn.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Failed to start compile:', error);
+                showToast('error', 'Compile Failed', 'Failed to start compile');
+                if (compileBtn) compileBtn.style.display = 'inline-flex';
+                if (cancelBtn) cancelBtn.style.display = 'none';
+            }
+        }
+        
+        // Cancel current compile from YAML editor
+        async function cancelCurrentCompile() {
+            if (!currentDeviceName || !currentCompileTaskId) {
+                showToast('error', 'No Active Compile', 'No compile to cancel');
+                return;
+            }
+            
+            await cancelCompile(currentDeviceName, currentCompileTaskId);
+            
+            // Show compile button, hide cancel button
+            const compileBtn = document.getElementById('yaml-compile-btn');
+            const cancelBtn = document.getElementById('yaml-cancel-btn');
+            if (compileBtn) compileBtn.style.display = 'inline-flex';
+            if (cancelBtn) cancelBtn.style.display = 'none';
+            
+            currentCompileTaskId = null;
         }
         
         // ESP Board Options by Platform
-        const ESP_BOARDS = {
-            'ESP32': [
-                { value: 'esp32dev', name: 'ESP32 Dev Module' },
-                { value: 'nodemcu-32s', name: 'NodeMCU-32S' },
-                { value: 'esp32-cam', name: 'ESP32-CAM' },
-                { value: 'ttgo-lora32', name: 'TTGO LoRa32' },
-                { value: 'ttgo-t-beam', name: 'TTGO T-Beam' },
-                { value: 'ttgo-t-jeijei', name: 'TTGO T-Jeijei' },
-                { value: 'm5stack-core', name: 'M5Stack Core' },
-                { value: 'm5stack-core2', name: 'M5Stack Core2' },
-                { value: 'm5stick-c', name: 'M5Stick C' },
-                { value: 'm5stick-c-plus', name: 'M5Stick C Plus' },
-                { value: 'wemos_d1_mini32', name: 'Wemos D1 Mini32' },
-                { value: 'lolin-d32', name: 'LOLIN D32' },
-                { value: 'lolin-d32-pro', name: 'LOLIN D32 Pro' },
-                { value: 'featheresp32', name: 'Adafruit Feather ESP32' },
-                { value: 'firebeetle32', name: 'FireBeetle ESP32' },
-                { value: 'esp32-poe-iso', name: 'ESP32 POE ISO' },
-                { value: 'az-delivery-devkit-v4', name: 'AZ-Delivery DevKit V4' },
-                { value: 'esp32-pico-kit', name: 'ESP32 Pico Kit' },
-                { value: 'lilygo-t-display', name: 'LILYGO T-Display' },
-                { value: 'lilygo-t-echo', name: 'LILYGO T-Echo' },
-                { value: 'esp32-thing', name: 'SparkFun ESP32 Thing' },
-                { value: 'esp32-thing-plus', name: 'SparkFun ESP32 Thing Plus' },
-                { value: 'esp32-edgin', name: 'ESP32 Edgin' },
-                { value: 'heltec_wifi_kit_32', name: 'Heltec WiFi Kit 32' },
-                { value: 'heltec_wifi_lora_32', name: 'Heltec WiFi LoRa 32' },
-                { value: 'heltec_wifi_lora_32_v2', name: 'Heltec WiFi LoRa 32 V2' },
-                { value: 'heltec_wifi_lora_32_v3', name: 'Heltec WiFi LoRa 32 V3' }
-            ],
-            'ESP32-S2': [
-                { value: 'esp32-s2-saola-1', name: 'ESP32-S2-Saola-1' },
-                { value: 'esp32-s2-kaluga-1', name: 'ESP32-S2-Kaluga-1' },
-                { value: 'seeed_xiao_esp32s2', name: 'Seeed XIAO ESP32-S2' },
-                { value: 'esp32s2usbcam', name: 'ESP32-S2 USB Camera' },
-                { value: 'adafruit_feather_esp32s2', name: 'Adafruit Feather ESP32-S2' },
-                { value: 'adafruit_esp32s2_tft_feather', name: 'Adafruit ESP32-S2 TFT Feather' },
-                { value: 'lilygo_t_beamsupreme', name: 'LILYGO T-Beam Supreme' }
-            ],
-            'ESP32-S3': [
-                { value: 'esp32-s3-devkitc-1', name: 'ESP32-S3-DevKitC-1' },
-                { value: 'esp32-s3-box-3', name: 'ESP32-S3-Box-3' },
-                { value: 'esp32-s3-box-lite', name: 'ESP32-S3-Box Lite' },
-                { value: 'seeed_xiao_esp32s3', name: 'Seeed XIAO ESP32-S3' },
-                { value: 'lilygo_t_display_s3', name: 'LILYGO T-Display S3' },
-                { value: 'lilygo_t7_s3', name: 'LILYGO T7 S3' },
-                { value: 'lilygo_t_camera_s3', name: 'LILYGO T-Camera S3' },
-                { value: 'adafruit_feather_esp32s3', name: 'Adafruit Feather ESP32-S3' },
-                { value: 'adafruit_esp32s3_tft_feather', name: 'Adafruit ESP32-S3 TFT Feather' },
-                { value: 'heltec_wifi_kit_32_v3', name: 'Heltec WiFi Kit 32 V3' },
-                { value: 'heltec_vision_master_e213', name: 'Heltec Vision Master E213' },
-                { value: 'esp32-s3-eye', name: 'ESP32-S3 Eye' }
-            ],
-            'ESP32-C3': [
-                { value: 'esp32-c3-devkitc-02', name: 'ESP32-C3-DevKitC-02' },
-                { value: 'esp32-c3-devkitm-1', name: 'ESP32-C3-DevKitM-1' },
-                { value: 'seeed_xiao_esp32c3', name: 'Seeed XIAO ESP32-C3' },
-                { value: 'lolin_c3_mini', name: 'LOLIN C3 Mini' },
-                { value: 'heltec_wireless_tracker', name: 'Heltec Wireless Tracker' }
-            ],
-            'ESP32-C6': [
-                { value: 'esp32-c6-devkitc-1', name: 'ESP32-C6-DevKitC-1' },
-                { value: 'esp32-c6-devkitm-1', name: 'ESP32-C6-DevKitM-1' },
-                { value: 'seeed_xiao_esp32c6', name: 'Seeed XIAO ESP32-C6' },
-                { value: 'lolin_c6_mini', name: 'LOLIN C6 Mini' }
-            ],
-            'ESP32-H2': [
-                { value: 'esp32-h2-devkitm-1', name: 'ESP32-H2-DevKitM-1' }
-            ],
-            'ESP32-P4': [
-                { value: 'esp32-p4-function-ev-board', name: 'ESP32-P4 Function EV Board' }
-            ],
-            'ESP8266': [
-                { value: 'esp01_1m', name: 'ESP01 (1MB)' },
-                { value: 'esp01', name: 'ESP01 (512KB)' },
-                { value: 'esp07', name: 'ESP07' },
-                { value: 'esp07s', name: 'ESP07S' },
-                { value: 'esp12e', name: 'ESP12E' },
-                { value: 'esp12s', name: 'ESP12S' },
-                { value: 'nodemcu', name: 'NodeMCU' },
-                { value: 'nodemcuv2', name: 'NodeMCU V2' },
-                { value: 'wemos_d1_mini', name: 'Wemos D1 Mini' },
-                { value: 'd1_mini', name: 'D1 Mini' },
-                { value: 'd1_mini_lite', name: 'D1 Mini Lite' },
-                { value: 'd1_mini_pro', name: 'D1 Mini Pro' },
-                { value: 'lolin_d1_mini_pro', name: 'LOLIN D1 Mini Pro' },
-                { value: 'wemos_d1', name: 'Wemos D1' },
-                { value: 'wemos_d1_pro', name: 'Wemos D1 Pro' },
-                { value: 'sonoff_basic', name: 'Sonoff Basic' },
-                { value: 'sonoff_s20', name: 'Sonoff S20' },
-                { value: 'sonoff_th', name: 'Sonoff TH' },
-                { value: 'sonoff_touch', name: 'Sonoff Touch' },
-                { value: 'sonoff_pow', name: 'Sonoff POW' },
-                { value: 'sonoff_dual', name: 'Sonoff Dual' },
-                { value: 'sonoff_4ch', name: 'Sonoff 4CH' },
-                { value: 'shelly1', name: 'Shelly 1' },
-                { value: 'shelly1pm', name: 'Shelly 1PM' },
-                { value: 'shelly2', name: 'Shelly 2' },
-                { value: 'shelly25', name: 'Shelly 2.5' },
-                { value: 'shelly_plug', name: 'Shelly Plug' },
-                { value: 'wifinfo', name: 'WiFi Info' },
-                { value: 'ikea_espnow', name: 'IKEA ESP-NOW' },
-                { value: 'irwifi_switch', name: 'IR-WiFi Switch' },
-                { value: 'lolin_d1_mini', name: 'LOLIN D1 Mini' },
-                { value: 'lolin_d1_mini_pro', name: 'LOLIN D1 Mini Pro' },
-                { value: 'lolin_d1_mini_lite', name: 'LOLIN D1 Mini Lite' },
-                { value: 'genetic_esp8266', name: 'Generic ESP8266' }
-            ],
-            'arduino_nano': [
-                { value: 'arduino_nano', name: 'Arduino Nano' }
-            ],
-            'arduino_uno': [
-                { value: 'arduino_uno', name: 'Arduino Uno' }
-            ],
-            'arduino_mega': [
-                { value: 'arduino_mega', name: 'Arduino Mega 2560' }
-            ],
-            'arduino_leonardo': [
-                { value: 'arduino_leonardo', name: 'Arduino Leonardo' }
-            ],
-            'rp2040': [
-                { value: 'pico', name: 'Raspberry Pi Pico' },
-                { value: 'pico_w', name: 'Raspberry Pi Pico W' },
-                { value: 'pico2', name: 'Raspberry Pi Pico 2' },
-                { value: 'adafruit_feather_rp2040', name: 'Adafruit Feather RP2040' },
-                { value: 'adafruit_itsybitsy_rp2040', name: 'Adafruit ItsyBitsy RP2040' },
-                { value: 'adafruit_qt_py_rp2040', name: 'Adafruit QT Py RP2040' },
-                { value: 'weact_studio_pico', name: 'WeAct Studio Pico' }
-            ]
-        };
+        // Cache for platforms and boards (loaded from API)
+        let PLATFORMS_CACHE = null;
         
-        function updateBoardOptionsOptions() {
+        // Load platforms from API
+        async function loadPlatforms() {
+            if (PLATFORMS_CACHE) return PLATFORMS_CACHE;
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/platforms`);
+                const data = await response.json();
+                if (data.success) {
+                    PLATFORMS_CACHE = data.platforms;
+                    return PLATFORMS_CACHE;
+                }
+            } catch (error) {
+                console.error('Failed to load platforms:', error);
+            }
+            return null;
+        }
+        
+        // Update board options when platform changes
+        async function updateBoardOptions() {
             const platform = document.getElementById('new-device-platform').value;
             const boardSelect = document.getElementById('new-device-board');
             
-            boardSelect.innerHTML = '<option value="">Select board...</option>';
+            boardSelect.innerHTML = '<option value="">Loading boards...</option>';
             
-            if (platform && ESP_BOARDS[platform]) {
-                ESP_BOARDS[platform].forEach(board => {
+            if (!platform) {
+                boardSelect.innerHTML = '<option value="">Select platform first...</option>';
+                return;
+            }
+            
+            // Load platforms if not cached
+            const platforms = await loadPlatforms();
+            
+            if (platforms && platforms[platform]) {
+                boardSelect.innerHTML = '<option value="">Select board...</option>';
+                platforms[platform].boards.forEach(board => {
                     const option = document.createElement('option');
                     option.value = board.value;
                     option.textContent = board.name;
                     boardSelect.appendChild(option);
                 });
+            } else {
+                boardSelect.innerHTML = '<option value="">No boards available</option>';
             }
+        }
+        
+        // Legacy function name for backward compatibility
+        function updateBoardOptionsOptions() {
+            return updateBoardOptions();
         }
         
         // Update Status Badge
@@ -1449,7 +1781,10 @@ ota_password: myotapassword"></textarea>
             const yamlSelect = document.getElementById('yaml-device-select');
             const logsSelect = document.getElementById('logs-device-select');
             
-            const options = devices.map(d => `<option value="${d.name}">${d.name}</option>`).join('');
+            const options = devices.map(d => {
+                const configFile = d.configuration || `${d.name}.yaml`;
+                return `<option value="${d.name}" data-config="${configFile}">${d.name}</option>`;
+            }).join('');
             
             yamlSelect.innerHTML = '<option value="">Select device...</option>' + options;
             logsSelect.innerHTML = '<option value="">Select device...</option>' + options;
@@ -1524,31 +1859,62 @@ ota_password: myotapassword"></textarea>
         
         // Show YAML
         async function showYaml(name) {
+            currentDeviceName = name;
             document.querySelector('[data-tab="yaml"]').click();
             document.getElementById('yaml-device-select').value = name;
+            
+            // Show compile button
+            const compileBtn = document.getElementById('yaml-compile-btn');
+            const cancelBtn = document.getElementById('yaml-cancel-btn');
+            if (compileBtn) compileBtn.style.display = 'inline-flex';
+            if (cancelBtn) cancelBtn.style.display = 'none';
+            
             await loadYaml();
         }
         
         // Load YAML
         async function loadYaml() {
-            const deviceName = document.getElementById('yaml-device-select').value;
+            const deviceSelect = document.getElementById('yaml-device-select');
+            const deviceName = deviceSelect.value;
             if (!deviceName) {
                 alert('Please select a device');
                 return;
             }
             
+            currentDeviceName = deviceName;
+            
+            // Get the configuration file name from the selected option
+            const selectedOption = deviceSelect.options[deviceSelect.selectedIndex];
+            const configFile = selectedOption.getAttribute('data-config') || `${deviceName}.yaml`;
+            
+            // Show compile button if device is selected
+            const compileBtn = document.getElementById('yaml-compile-btn');
+            const cancelBtn = document.getElementById('yaml-cancel-btn');
+            if (compileBtn) compileBtn.style.display = 'inline-flex';
+            if (cancelBtn) cancelBtn.style.display = 'none';
+            
             try {
-                // Load YAML
-                const yamlResponse = await fetch(`${API_BASE}/api/yaml/${deviceName}`);
+                // Load YAML using configuration file name
+                const yamlResponse = await fetch(`${API_BASE}/api/yaml/${encodeURIComponent(configFile.replace('.yaml', ''))}`);
                 const yamlData = await yamlResponse.json();
                 
                 if (yamlData.success) {
-                    document.getElementById('yaml-content').value = yamlData.yaml;
+                    // Use Monaco Editor if available, otherwise fallback to textarea
+                    if (typeof setEditorContent === 'function' && editor) {
+                        setEditorContent(yamlData.yaml);
+                    } else {
+                        document.getElementById('yaml-content').value = yamlData.yaml;
+                    }
                     currentYaml = yamlData;
                     addLog(deviceName, 'info', 'Configuration loaded');
                     
                     // Show upload button
                     document.getElementById('yaml-upload-btn').style.display = 'inline-flex';
+                    
+                    // Validate YAML
+                    if (typeof validateYAML === 'function') {
+                        validateYAML();
+                    }
                 } else {
                     alert('Failed to load configuration: ' + (yamlData.error || 'Unknown error'));
                     return;
@@ -1592,6 +1958,17 @@ ota_password: myotapassword"></textarea>
                         </div>
                     `;
                     document.getElementById('yaml-entities').innerHTML = haEntitiesHtml;
+                    
+                    // Update selected board for pin visualization
+                    if (device.platform) {
+                        selectedPlatform = device.platform;
+                        selectedBoard = device.board || 'esp32dev';
+                        
+                        // Update chip visualization
+                        if (typeof updateChipVisualization === 'function') {
+                            updateChipVisualization(selectedPlatform, selectedBoard);
+                        }
+                    }
                 } else {
                     document.getElementById('yaml-entities').innerHTML = '<div style="color: var(--text-secondary);">Failed to load device details</div>';
                 }
@@ -1663,13 +2040,19 @@ ota_password: myotapassword"></textarea>
                 return;
             }
             
-            const yaml = document.getElementById('yaml-content').value;
+            // Use Monaco Editor if available, otherwise fallback to textarea
+            let yaml;
+            if (typeof getEditorContent === 'function' && editor) {
+                yaml = getEditorContent();
+            } else {
+                yaml = document.getElementById('yaml-content').value;
+            }
             
             try {
                 const response = await fetch(`${API_BASE}/api/yaml/${deviceName}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ yaml_content: yaml })
+                    body: JSON.stringify({ yaml: yaml })
                 });
                 const data = await response.json();
                 
@@ -2027,11 +2410,46 @@ Device-specific instructions:
                         addLog(data.task_id || 'system', data.log_type || 'info', data.log);
                     } else if (data.type === 'progress') {
                         updateProgress(data.progress, data.message || data.status);
+                        
+                        // Update compilation status for device cards
+                        if (data.task_id && data.device_name) {
+                            compilationStatus[data.device_name] = {
+                                status: data.status,
+                                progress: data.progress,
+                                message: data.message || '',
+                                task_id: data.task_id
+                            };
+                            renderDevices();
+                            
+                            // Update YAML editor buttons if this is the current device
+                            if (currentDeviceName === data.device_name) {
+                                const compileBtn = document.getElementById('yaml-compile-btn');
+                                const cancelBtn = document.getElementById('yaml-cancel-btn');
+                                
+                                if (data.status === 'compiling' || data.status === 'queued') {
+                                    if (compileBtn) compileBtn.style.display = 'none';
+                                    if (cancelBtn) cancelBtn.style.display = 'inline-flex';
+                                    currentCompileTaskId = data.task_id;
+                                } else if (data.status === 'compiled' || data.status === 'error' || data.status === 'cancelled') {
+                                    if (compileBtn) compileBtn.style.display = 'inline-flex';
+                                    if (cancelBtn) cancelBtn.style.display = 'none';
+                                    currentCompileTaskId = null;
+                                }
+                            }
+                        }
+                        
                         if (data.status === 'compiled' || data.status === 'uploaded' || data.status === 'error') {
                             setTimeout(() => {
                                 if (data.status !== 'error') {
                                     hideProgressModal();
                                     fetchDevices();
+                                }
+                                // Clear compilation status after a delay
+                                if (data.device_name) {
+                                    setTimeout(() => {
+                                        delete compilationStatus[data.device_name];
+                                        renderDevices();
+                                    }, 5000);
                                 }
                             }, 2000);
                         }
@@ -2055,6 +2473,30 @@ Device-specific instructions:
         connectWebSocket();
         
         // Compile Device (async with WebSocket)
+        async function deleteDevice(name) {
+            if (!confirm(`Are you sure you want to delete "${name}"?\n\nThis will remove the device configuration file and cannot be undone.`)) {
+                return;
+            }
+            
+            try {
+                // Delete from ESPHome Dashboard
+                const response = await fetch(`${API_BASE}/api/yaml/${name}`, {
+                    method: 'DELETE'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showToast('success', 'Device Deleted', `${name} has been removed`);
+                    loadDevices(); // Refresh device list
+                } else {
+                    showToast('error', 'Delete Failed', data.error || 'Unknown error');
+                }
+            } catch (e) {
+                console.error('Failed to delete device:', e);
+                showToast('error', 'Delete Error', 'Failed to delete device');
+            }
+        }
+        
         async function compileDevice(name) {
             if (!confirm(`Compile ${name}?`)) return;
             
@@ -3994,10 +4436,216 @@ display:
         // New Device Modal
         function showNewDeviceModal() {
             document.getElementById('new-device-modal').classList.add('active');
+            // Reset to create tab
+            switchNewDeviceTab('create');
+            // Clear forms
+            document.getElementById('new-device-name').value = '';
+            document.getElementById('new-device-platform').value = '';
+            document.getElementById('new-device-board').innerHTML = '<option value="">Select board...</option>';
+            document.getElementById('import-yaml-content').value = '';
+            document.getElementById('import-preview').style.display = 'none';
+            importedYamlData = null;
         }
 
         function closeNewDeviceModal() {
             document.getElementById('new-device-modal').classList.remove('active');
+        }
+        
+        // New Device Tab Switching
+        function switchNewDeviceTab(tab) {
+            const createContent = document.getElementById('new-device-create-content');
+            const importContent = document.getElementById('new-device-import-content');
+            const tabCreate = document.getElementById('tab-create');
+            const tabImport = document.getElementById('tab-import');
+            const btnCreate = document.getElementById('btn-create-device');
+            const btnImport = document.getElementById('btn-import-device');
+            
+            if (tab === 'create') {
+                createContent.style.display = 'flex';
+                importContent.style.display = 'none';
+                tabCreate.style.background = 'var(--primary)';
+                tabCreate.style.color = 'white';
+                tabImport.style.background = 'transparent';
+                tabImport.style.color = 'var(--text-secondary)';
+                btnCreate.style.display = 'inline-flex';
+                btnImport.style.display = 'none';
+            } else {
+                createContent.style.display = 'none';
+                importContent.style.display = 'flex';
+                tabImport.style.background = 'var(--primary)';
+                tabImport.style.color = 'white';
+                tabCreate.style.background = 'transparent';
+                tabCreate.style.color = 'var(--text-secondary)';
+                btnCreate.style.display = 'none';
+                btnImport.style.display = 'inline-flex';
+            }
+        }
+        
+        // Parse Imported YAML
+        let importedYamlData = null;
+        
+        // File Upload Handler
+        function handleYamlFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const fileNameDisplay = document.getElementById('selected-file-name');
+            if (fileNameDisplay) {
+                fileNameDisplay.textContent = file.name;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('import-yaml-content').value = e.target.result;
+                // Auto-parse after upload
+                parseImportedYaml();
+            };
+            reader.onerror = function() {
+                showToast('error', 'File Error', 'Failed to read file');
+            };
+            reader.readAsText(file);
+        }
+        
+        async function parseImportedYaml() {
+            const yamlContent = document.getElementById('import-yaml-content').value.trim();
+            if (!yamlContent) {
+                showToast('warning', 'Empty YAML', 'Please paste a YAML configuration');
+                return;
+            }
+            
+            try {
+                // Validate and parse YAML
+                const response = await fetch(`${API_BASE}/api/validate/yaml`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ yaml: yamlContent })
+                });
+                const data = await response.json();
+                
+                if (!data.valid) {
+                    showToast('error', 'Invalid YAML', data.errors?.join(', ') || 'Syntax error');
+                    return;
+                }
+                
+                importedYamlData = {
+                    yaml: yamlContent,
+                    components: data.components || [],
+                    used_pins: data.used_pins || {},
+                    warnings: data.warnings || []
+                };
+                
+                // Show preview
+                const previewEl = document.getElementById('import-preview');
+                const infoEl = document.getElementById('import-detected-info');
+                previewEl.style.display = 'block';
+                
+                // Extract device name from YAML
+                const yamlLines = yamlContent.split('\n');
+                let deviceName = 'imported-device';
+                let friendlyName = '';
+                
+                for (const line of yamlLines) {
+                    if (line.match(/^\s*name:\s*/)) {
+                        deviceName = line.split(':')[1].trim().replace(/['"]/g, '');
+                    }
+                    if (line.match(/^\s*friendly_name:\s*/)) {
+                        friendlyName = line.split(':')[1].trim().replace(/['"]/g, '');
+                    }
+                }
+                
+                let infoHtml = `
+                    <div style="margin-bottom: 8px;"><strong>Device Name:</strong> ${deviceName}</div>
+                    ${friendlyName ? `<div style="margin-bottom: 8px;"><strong>Friendly Name:</strong> ${friendlyName}</div>` : ''}
+                    <div style="margin-bottom: 8px;"><strong>Components:</strong> ${data.components?.join(', ') || 'None'}</div>
+                `;
+                
+                // Show used pins
+                const usedPinsList = [];
+                for (const [type, pins] of Object.entries(data.used_pins || {})) {
+                    if (pins && pins.length > 0) {
+                        usedPinsList.push(...pins.map(p => p.pin));
+                    }
+                }
+                if (usedPinsList.length > 0) {
+                    infoHtml += `<div style="margin-bottom: 8px;"><strong>Used Pins:</strong> ${[...new Set(usedPinsList)].join(', ')}</div>`;
+                }
+                
+                // Show warnings
+                if (data.warnings && data.warnings.length > 0) {
+                    infoHtml += `
+                        <div style="margin-top: 8px; padding: 8px; background: rgba(255, 152, 0, 0.1); border-radius: 6px;">
+                            <strong style="color: var(--warning);">Warnings:</strong>
+                            <ul style="margin: 4px 0 0 20px; font-size: 12px;">
+                                ${data.warnings.map(w => `<li>${w}</li>`).join('')}
+                            </ul>
+                        </div>
+                    `;
+                }
+                
+                infoEl.innerHTML = infoHtml;
+                showToast('success', 'YAML Valid', 'Configuration parsed successfully');
+                
+            } catch (e) {
+                console.error('Failed to parse YAML:', e);
+                showToast('error', 'Parse Error', 'Failed to parse YAML configuration');
+            }
+        }
+        
+        // Import YAML Device
+        async function importYamlDevice() {
+            const yamlContent = document.getElementById('import-yaml-content').value.trim();
+            if (!yamlContent) {
+                showToast('warning', 'Empty YAML', 'Please paste a YAML configuration');
+                return;
+            }
+            
+            // Parse if not already parsed
+            if (!importedYamlData) {
+                await parseImportedYaml();
+                if (!importedYamlData) return;
+            }
+            
+            // Extract device name from YAML
+            const yamlLines = yamlContent.split('\n');
+            let deviceName = 'imported-device';
+            
+            for (const line of yamlLines) {
+                if (line.match(/^\s*name:\s*/) && !line.includes('friendly_name')) {
+                    deviceName = line.split(':')[1].trim().replace(/['"]/g, '');
+                    break;
+                }
+            }
+            
+            // Validate device name
+            if (!/^[a-z0-9_]+$/.test(deviceName)) {
+                deviceName = deviceName.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+            }
+            
+            try {
+                // Create device via API
+                const response = await fetch(`${API_BASE}/api/yaml/${deviceName}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ yaml: yamlContent })
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showToast('success', 'Device Imported', `${deviceName} created successfully`);
+                    closeNewDeviceModal();
+                    loadDevices();
+                    
+                    // Clear import form
+                    document.getElementById('import-yaml-content').value = '';
+                    document.getElementById('import-preview').style.display = 'none';
+                    importedYamlData = null;
+                } else {
+                    showToast('error', 'Import Failed', data.error || 'Unknown error');
+                }
+            } catch (e) {
+                console.error('Failed to import device:', e);
+                showToast('error', 'Import Error', 'Failed to create device');
+            }
         }
 
         // Secrets Modal Functions
@@ -4400,6 +5048,30 @@ display:
         document.getElementById('device-modal').addEventListener('click', (e) => {
             if (e.target === e.currentTarget) closeModal();
         });
+    </script>
+    <!-- Monaco Editor -->
+    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
+    <script src="/static/js/editor.js"></script>
+    <script>
+        // Initialize Monaco Editor immediately after script load
+        (function() {
+            // Wait for DOM and editor.js to be ready
+            function tryInit() {
+                if (typeof initMonacoEditor === 'function' && document.getElementById('yaml-editor-container')) {
+                    console.log('Initializing Monaco Editor...');
+                    initMonacoEditor();
+                } else {
+                    // Retry after short delay
+                    setTimeout(tryInit, 100);
+                }
+            }
+            // Start initialization
+            if (document.readyState === 'complete') {
+                tryInit();
+            } else {
+                window.addEventListener('load', tryInit);
+            }
+        })();
     </script>
 </body>
 </html>

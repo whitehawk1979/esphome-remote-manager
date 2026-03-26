@@ -14,7 +14,7 @@ import threading
 import queue
 from datetime import datetime
 from typing import Optional, List, Dict, Any
-from fastapi import FastAPI, HTTPException, BackgroundTasks, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, BackgroundTasks, WebSocket, WebSocketDisconnect, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -46,6 +46,172 @@ ESP_CHIP_TYPES = [
     {"id": "esp32-c3", "name": "ESP32-C3", "platform": "ESP32", "boards": ["esp32-c3-devkitc-02"]},
     {"id": "esp8266", "name": "ESP8266", "platform": "ESP8266", "boards": ["esp01_1m", "esp07", "esp12e", "nodemcu", "wemos_d1_mini"]},
 ]
+
+# Full Platform and Board List (from ESPHome documentation)
+ESP_PLATFORMS = {
+    "ESP32": {
+        "name": "ESP32",
+        "description": "ESP32 series (including S2, S3, C3, C6, H2, P4)",
+        "boards": [
+            {"value": "esp32dev", "name": "ESP32 Dev Module"},
+            {"value": "nodemcu-32s", "name": "NodeMCU-32S"},
+            {"value": "esp32-cam", "name": "ESP32-CAM"},
+            {"value": "ttgo-lora32", "name": "TTGO LoRa32"},
+            {"value": "ttgo-t-beam", "name": "TTGO T-Beam"},
+            {"value": "m5stack-core", "name": "M5Stack Core"},
+            {"value": "m5stack-core2", "name": "M5Stack Core2"},
+            {"value": "m5stick-c", "name": "M5Stick C"},
+            {"value": "m5stick-c-plus", "name": "M5Stick C Plus"},
+            {"value": "wemos_d1_mini32", "name": "Wemos D1 Mini32"},
+            {"value": "lolin-d32", "name": "LOLIN D32"},
+            {"value": "lolin-d32-pro", "name": "LOLIN D32 Pro"},
+            {"value": "featheresp32", "name": "Adafruit Feather ESP32"},
+            {"value": "firebeetle32", "name": "FireBeetle ESP32"},
+            {"value": "esp32-poe-iso", "name": "ESP32 POE ISO"},
+            {"value": "az-delivery-devkit-v4", "name": "AZ-Delivery DevKit V4"},
+            {"value": "lilygo-t-display", "name": "LILYGO T-Display"},
+            {"value": "lilygo-t-echo", "name": "LILYGO T-Echo"},
+            {"value": "heltec_wifi_kit_32", "name": "Heltec WiFi Kit 32"},
+            {"value": "heltec_wifi_lora_32", "name": "Heltec WiFi LoRa 32"},
+            {"value": "heltec_wifi_lora_32_v2", "name": "Heltec WiFi LoRa 32 V2"},
+            {"value": "heltec_wifi_lora_32_v3", "name": "Heltec WiFi LoRa 32 V3"},
+        ]
+    },
+    "ESP32-S2": {
+        "name": "ESP32-S2",
+        "description": "ESP32-S2 series (USB native)",
+        "boards": [
+            {"value": "esp32-s2-saola-1", "name": "ESP32-S2-Saola-1"},
+            {"value": "esp32-s2-kaluga-1", "name": "ESP32-S2-Kaluga-1"},
+            {"value": "seeed_xiao_esp32s2", "name": "Seeed XIAO ESP32-S2"},
+            {"value": "esp32s2usbcam", "name": "ESP32-S2 USB Camera"},
+            {"value": "adafruit_feather_esp32s2", "name": "Adafruit Feather ESP32-S2"},
+            {"value": "adafruit_esp32s2_tft_feather", "name": "Adafruit ESP32-S2 TFT Feather"},
+            {"value": "lilygo_t_beamsupreme", "name": "LILYGO T-Beam Supreme"},
+        ]
+    },
+    "ESP32-S3": {
+        "name": "ESP32-S3",
+        "description": "ESP32-S3 series (AI acceleration)",
+        "boards": [
+            {"value": "esp32-s3-devkitc-1", "name": "ESP32-S3-DevKitC-1"},
+            {"value": "esp32-s3-box-3", "name": "ESP32-S3-Box-3"},
+            {"value": "esp32-s3-box-lite", "name": "ESP32-S3-Box Lite"},
+            {"value": "seeed_xiao_esp32s3", "name": "Seeed XIAO ESP32-S3"},
+            {"value": "lilygo_t_display_s3", "name": "LILYGO T-Display S3"},
+            {"value": "lilygo_t7_s3", "name": "LILYGO T7 S3"},
+            {"value": "lilygo_t_camera_s3", "name": "LILYGO T-Camera S3"},
+            {"value": "adafruit_feather_esp32s3", "name": "Adafruit Feather ESP32-S3"},
+            {"value": "adafruit_esp32s3_tft_feather", "name": "Adafruit ESP32-S3 TFT Feather"},
+            {"value": "heltec_wifi_kit_32_v3", "name": "Heltec WiFi Kit 32 V3"},
+            {"value": "heltec_vision_master_e213", "name": "Heltec Vision Master E213"},
+            {"value": "esp32-s3-eye", "name": "ESP32-S3 Eye"},
+        ]
+    },
+    "ESP32-C3": {
+        "name": "ESP32-C3",
+        "description": "ESP32-C3 series (RISC-V, low cost)",
+        "boards": [
+            {"value": "esp32-c3-devkitc-02", "name": "ESP32-C3-DevKitC-02"},
+            {"value": "esp32-c3-devkitm-1", "name": "ESP32-C3-DevKitM-1"},
+            {"value": "seeed_xiao_esp32c3", "name": "Seeed XIAO ESP32-C3"},
+            {"value": "lolin_c3_mini", "name": "LOLIN C3 Mini"},
+            {"value": "heltec_wireless_tracker", "name": "Heltec Wireless Tracker"},
+        ]
+    },
+    "ESP32-C6": {
+        "name": "ESP32-C6",
+        "description": "ESP32-C6 series (RISC-V, Zigbee)",
+        "boards": [
+            {"value": "esp32-c6-devkitc-1", "name": "ESP32-C6-DevKitC-1"},
+            {"value": "esp32-c6-devkitm-1", "name": "ESP32-C6-DevKitM-1"},
+            {"value": "seeed_xiao_esp32c6", "name": "Seeed XIAO ESP32-C6"},
+            {"value": "lolin_c6_mini", "name": "LOLIN C6 Mini"},
+        ]
+    },
+    "ESP32-H2": {
+        "name": "ESP32-H2",
+        "description": "ESP32-H2 series (RISC-V, Thread/Zigbee)",
+        "boards": [
+            {"value": "esp32-h2-devkitm-1", "name": "ESP32-H2-DevKitM-1"},
+        ]
+    },
+    "ESP32-P4": {
+        "name": "ESP32-P4",
+        "description": "ESP32-P4 series (high performance)",
+        "boards": [
+            {"value": "esp32-p4-function-ev-board", "name": "ESP32-P4 Function EV Board"},
+        ]
+    },
+    "ESP8266": {
+        "name": "ESP8266",
+        "description": "ESP8266 series (WiFi classic)",
+        "boards": [
+            {"value": "esp01_1m", "name": "ESP01 (1MB)"},
+            {"value": "esp01", "name": "ESP01 (512KB)"},
+            {"value": "esp07", "name": "ESP07"},
+            {"value": "esp07s", "name": "ESP07S"},
+            {"value": "esp12e", "name": "ESP12E"},
+            {"value": "esp12s", "name": "ESP12S"},
+            {"value": "nodemcu", "name": "NodeMCU"},
+            {"value": "nodemcuv2", "name": "NodeMCU v2"},
+            {"value": "wemos_d1_mini", "name": "Wemos D1 Mini"},
+            {"value": "wemos_d1_mini_pro", "name": "Wemos D1 Mini Pro"},
+            {"value": "wemos_d1_mini_lite", "name": "Wemos D1 Mini Lite"},
+            {"value": "d1_mini", "name": "D1 Mini"},
+            {"value": "d1", "name": "D1"},
+            {"value": "d1_mini_pro", "name": "D1 Mini Pro"},
+            {"value": "d1_mini_lite", "name": "D1 Mini Lite"},
+            {"value": "lolin_d1_mini_pro", "name": "LOLIN D1 Mini Pro"},
+            {"value": "gen4_4d", "name": "Gen4 4D"},
+            {"value": "gen4_4d_pro", "name": "Gen4 4D Pro"},
+            {"value": "oak", "name": "Oak"},
+            {"value": "phoenix_v1", "name": "Phoenix v1"},
+            {"value": "phoenix_v2", "name": "Phoenix v2"},
+            {"value": "esp_wroom_02", "name": "ESP WROOM 02"},
+            {"value": "esp_wroom_02_v2", "name": "ESP WROOM 02 v2"},
+            {"value": "espduino", "name": "ESPduino"},
+            {"value": "esp32_bridge", "name": "ESP32 Bridge"},
+            {"value": "xinabox_cw01", "name": "XinaBox CW01"},
+            {"value": "wifinfo", "name": "WifInfo"},
+            {"value": "espectro32", "name": "ESPectro32"},
+            {"value": "ea-iot-base-esp8266", "name": "EA IoT Base ESP8266"},
+        ]
+    },
+    "RP2040": {
+        "name": "RP2040",
+        "description": "Raspberry Pi RP2040 (Pico)",
+        "boards": [
+            {"value": "pico", "name": "Raspberry Pi Pico"},
+            {"value": "pico2", "name": "Raspberry Pi Pico 2"},
+            {"value": "rpipicow", "name": "Raspberry Pi Pico W"},
+            {"value": "rpipico2w", "name": "Raspberry Pi Pico 2 W"},
+        ]
+    },
+    "BK7231N": {
+        "name": "BK7231N",
+        "description": "Beken BK7231N (Tuya)",
+        "boards": [
+            {"value": "generic-bk7231n-qfn32", "name": "Generic BK7231N QFN32"},
+        ]
+    },
+    "BK7231T": {
+        "name": "BK7231T",
+        "description": "Beken BK7231T (Tuya)",
+        "boards": [
+            {"value": "generic-bk7231t-qfn32", "name": "Generic BK7231T QFN32"},
+        ]
+    },
+    "RTL87xx": {
+        "name": "RTL87xx",
+        "description": "Realtek AmebaZ (RTL8710/RTL8711)",
+        "boards": [
+            {"value": "rtl8710dn", "name": "RTL8710DN"},
+            {"value": "rtl8710bn", "name": "RTL8710BN"},
+            {"value": "rtl8711am", "name": "RTL8711AM"},
+        ]
+    },
+}
 
 
 # Logging
@@ -108,6 +274,11 @@ state = {
 # Background task status
 update_tasks: Dict[str, Dict[str, Any]] = {}
 
+# Compile queue for sequential processing
+compile_queue: queue.Queue = queue.Queue()
+compile_current: Dict[str, Any] = {"task_id": None, "device_name": None, "status": "idle"}
+compile_lock: threading.Lock = threading.Lock()
+
 # WebSocket connections
 websocket_connections: List[WebSocket] = []
 
@@ -131,11 +302,16 @@ async def broadcast_log(task_id: str, log_line: str, log_type: str = "info"):
             pass
 
 
-async def broadcast_progress(task_id: str, progress: int, status: str, message: str = ""):
+async def broadcast_progress(task_id: str, progress: int, status: str, message: str = "", device_name: str = ""):
     """Broadcast progress to all connected WebSocket clients"""
+    # Try to get device_name from update_tasks if not provided
+    if not device_name and task_id in update_tasks:
+        device_name = update_tasks[task_id].get("device_name", "")
+    
     message_json = json.dumps({
         "type": "progress",
         "task_id": task_id,
+        "device_name": device_name,
         "progress": progress,
         "status": status,
         "message": message,
@@ -148,11 +324,95 @@ async def broadcast_progress(task_id: str, progress: int, status: str, message: 
             pass
 
 
+async def task_queue_consumer():
+    """Background task to consume queue and broadcast to WebSocket clients"""
+    while True:
+        try:
+            # Non-blocking get with timeout
+            try:
+                item = task_queue.get(timeout=0.1)
+                if item[0] == "log":
+                    _, task_id, log_line, log_type = item
+                    await broadcast_log(task_id, log_line, log_type)
+                elif item[0] == "progress":
+                    _, task_id, progress, status, message, device_name = item
+                    await broadcast_progress(task_id, progress, status, message, device_name)
+            except queue.Empty:
+                pass
+            await asyncio.sleep(0.01)
+        except Exception as e:
+            logger.error(f"Task queue consumer error: {e}")
+            await asyncio.sleep(0.1)
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Start background tasks on startup"""
+    asyncio.create_task(task_queue_consumer())
+
+
+def compile_worker():
+    """Background worker that processes compile queue sequentially"""
+    while True:
+        try:
+            # Get next task from queue (blocking)
+            task_data = compile_queue.get(timeout=1)
+            if task_data is None:  # Shutdown signal
+                break
+            
+            task_id = task_data["task_id"]
+            device_name = task_data["device_name"]
+            yaml_file = task_data["yaml_file"]
+            
+            # Check if task was cancelled before starting
+            if task_id in update_tasks and update_tasks[task_id].get("status") == "cancelled":
+                logger.info(f"Task {task_id} was cancelled, skipping")
+                compile_queue.task_done()
+                continue
+            
+            # Update current compile status
+            with compile_lock:
+                compile_current["task_id"] = task_id
+                compile_current["device_name"] = device_name
+                compile_current["status"] = "running"
+            
+            logger.info(f"Starting compile for {device_name} (task_id: {task_id})")
+            
+            # Run the compile
+            run_compile_with_logs(task_id, device_name, yaml_file)
+            
+            # Mark task as done
+            compile_queue.task_done()
+            
+            # Clear current compile status
+            with compile_lock:
+                compile_current["task_id"] = None
+                compile_current["device_name"] = None
+                compile_current["status"] = "idle"
+            
+            logger.info(f"Completed compile for {device_name}")
+            
+        except queue.Empty:
+            continue
+        except Exception as e:
+            logger.error(f"Compile worker error: {e}")
+            with compile_lock:
+                compile_current["task_id"] = None
+                compile_current["device_name"] = None
+                compile_current["status"] = "idle"
+
+
+# Start compile worker thread
+compile_worker_thread = threading.Thread(target=compile_worker, daemon=True)
+compile_worker_thread.start()
+
+
 def run_compile_with_logs(task_id: str, device_name: str, yaml_file: str):
     """Run compile in background with real-time log streaming"""
     try:
         update_tasks[task_id]["status"] = "compiling"
         update_tasks[task_id]["progress"] = 0
+        update_tasks[task_id]["device_name"] = device_name  # Store device name for WebSocket
         
         # Run esphome compile with real-time output
         process = subprocess.Popen(
@@ -172,6 +432,7 @@ def run_compile_with_logs(task_id: str, device_name: str, yaml_file: str):
                 # Update progress based on output
                 if "Compiling" in line:
                     update_tasks[task_id]["progress"] = min(90, update_tasks[task_id]["progress"] + 5)
+                    task_queue.put(("progress", task_id, update_tasks[task_id]["progress"], "compiling", line.strip(), device_name))
                 elif "Successfully" in line:
                     update_tasks[task_id]["progress"] = 95
         
@@ -181,16 +442,16 @@ def run_compile_with_logs(task_id: str, device_name: str, yaml_file: str):
             update_tasks[task_id]["status"] = "compiled"
             update_tasks[task_id]["progress"] = 100
             update_tasks[task_id]["result"] = "success"
-            task_queue.put(("progress", task_id, 100, "compiled", "Compilation successful"))
+            task_queue.put(("progress", task_id, 100, "compiled", "Compilation successful", device_name))
         else:
             update_tasks[task_id]["status"] = "error"
             update_tasks[task_id]["result"] = "failed"
-            task_queue.put(("progress", task_id, 0, "error", "Compilation failed"))
+            task_queue.put(("progress", task_id, 0, "error", "Compilation failed", device_name))
             
     except Exception as e:
         update_tasks[task_id]["status"] = "error"
         update_tasks[task_id]["result"] = str(e)
-        task_queue.put(("progress", task_id, 0, "error", str(e)))
+        task_queue.put(("progress", task_id, 0, "error", str(e), device_name))
 
 
 def run_upload_with_logs(task_id: str, device_name: str, yaml_file: str, upload_type: str = "ota"):
@@ -337,38 +598,60 @@ async def root():
 @app.get("/api/health")
 async def health():
     """Health check endpoint"""
-    result = await call_esphome_api("/api/health")
-    
-    esphome_version = "unknown"
-    if "esphome_version" in result:
-        esphome_version = result["esphome_version"]
-        if esphome_version.startswith("Version: "):
-            esphome_version = esphome_version.replace("Version: ", "")
-    
-    state["esphome_version"] = esphome_version
-    
-    # Update MQTT state
-    if ENABLE_MQTT_DISCOVERY:
-        publish_mqtt(f"{DEVICE_ID}/status", "healthy" if "error" not in result else "error")
-        publish_mqtt(f"{DEVICE_ID}/version", esphome_version)
-    
-    return {
-        "status": "healthy" if "error" not in result else "error",
-        "esphome_version": esphome_version,
-        "agent_version": result.get("agent_version", "unknown"),
-        "container_running": result.get("container_running", False),
-        "timestamp": datetime.now().isoformat(),
-        # Configuration info
-        "esphome_api_url": ESPHOME_API_URL,
-        "esphome_dashboard_url": ESPHOME_DASHBOARD_URL,
-        "mqtt_broker": MQTT_BROKER,
-        "mqtt_port": MQTT_PORT,
-        "mqtt_user": MQTT_USER,
-        "ha_url": HA_URL,
-        "ha_mcp_url": HA_MCP_URL,
-        "device_id": DEVICE_ID,
-        "mqtt_discovery_enabled": ENABLE_MQTT_DISCOVERY
-    }
+    # Try to get devices from ESPHome Dashboard to check connectivity
+    try:
+        devices = await get_devices_from_dashboard()
+        esphome_running = True
+        esphome_version = "unknown"
+        
+        # Get ESPHome version from first device if available
+        if devices and len(devices) > 0:
+            esphome_version = devices[0].get("current_version", "unknown")
+        
+        state["esphome_version"] = esphome_version
+        
+        # Update MQTT state
+        if ENABLE_MQTT_DISCOVERY:
+            publish_mqtt(f"{DEVICE_ID}/status", "healthy")
+            publish_mqtt(f"{DEVICE_ID}/version", esphome_version)
+        
+        return {
+            "status": "healthy",
+            "esphome_version": esphome_version,
+            "agent_version": "1.0.0",
+            "container_running": True,
+            "device_count": len(devices),
+            "timestamp": datetime.now().isoformat(),
+            # Configuration info
+            "esphome_api_url": ESPHOME_API_URL,
+            "esphome_dashboard_url": ESPHOME_DASHBOARD_URL,
+            "mqtt_broker": MQTT_BROKER,
+            "mqtt_port": MQTT_PORT,
+            "mqtt_user": MQTT_USER,
+            "ha_url": HA_URL,
+            "ha_mcp_url": HA_MCP_URL,
+            "device_id": DEVICE_ID,
+            "mqtt_discovery_enabled": ENABLE_MQTT_DISCOVERY
+        }
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
+        return {
+            "status": "error",
+            "error": str(e),
+            "esphome_version": "unknown",
+            "agent_version": "unknown",
+            "container_running": False,
+            "timestamp": datetime.now().isoformat(),
+            "esphome_api_url": ESPHOME_API_URL,
+            "esphome_dashboard_url": ESPHOME_DASHBOARD_URL,
+            "mqtt_broker": MQTT_BROKER,
+            "mqtt_port": MQTT_PORT,
+            "mqtt_user": MQTT_USER,
+            "ha_url": HA_URL,
+            "ha_mcp_url": HA_MCP_URL,
+            "device_id": DEVICE_ID,
+            "mqtt_discovery_enabled": ENABLE_MQTT_DISCOVERY
+        }
 
 
 async def call_esphome_api(endpoint: str, method: str = "GET", data: Optional[dict] = None) -> Dict[str, Any]:
@@ -451,8 +734,100 @@ async def get_devices_from_dashboard() -> List[Dict[str, Any]]:
 
 @app.get("/api/devices")
 async def list_devices():
-    """List all ESPHome devices"""
+    """List all ESPHome devices with HA online status and YAML-parsed platform/board"""
     devices = await get_devices_from_dashboard()
+    
+    # Normalize platform values (ESP32S3 -> ESP32, ESP32S2 -> ESP32, etc.)
+    for device in devices:
+        platform = device.get("platform", "unknown")
+        if platform and platform.upper().startswith("ESP32"):
+            device["platform"] = "ESP32"
+        elif platform and platform.upper() == "ESP8266":
+            device["platform"] = "ESP8266"
+        elif platform and platform.upper() == "RP2040":
+            device["platform"] = "RP2040"
+        elif platform and platform.upper() == "HOST":
+            device["platform"] = "HOST"
+    
+    # Fetch HA devices in background (don't block main response)
+    ha_devices_map = {}
+    try:
+        # Use shorter timeout for HA devices
+        ha_devices = await asyncio.wait_for(get_ha_devices(), timeout=10)
+        if ha_devices.get("success") and ha_devices.get("devices"):
+            for ha_device in ha_devices["devices"]:
+                # Map by name (try both - and _)
+                ha_devices_map[ha_device["name"]] = ha_device
+                ha_devices_map[ha_device["name"].replace("-", "_")] = ha_device
+                ha_devices_map[ha_device["name"].replace("_", "-")] = ha_device
+    except asyncio.TimeoutError:
+        logger.warning("HA devices fetch timed out, returning devices without HA data")
+    except Exception as e:
+        logger.error(f"Failed to fetch HA devices: {e}")
+    
+    # Merge HA data with devices and fetch platform/board from YAML
+    for device in devices:
+        device_name = device["name"]
+        
+        # Try different name formats: exact, with underscores, partial
+        ha_device = (ha_devices_map.get(device_name) or 
+                     ha_devices_map.get(device_name.replace("-", "_")) or 
+                     ha_devices_map.get(device_name.replace("_", "-")))
+        
+        # Try partial match for complex names like "esp32-s3-box-3-esp32s3box-bla" -> "esp32_s3_box_3"
+        if not ha_device:
+            for ha_name in ha_devices_map:
+                # Check if HA device name is contained in device name (normalized)
+                normalized_device = device_name.replace("-", "_").replace(" ", "_")
+                normalized_ha = ha_name.replace("-", "_").replace(" ", "_")
+                if normalized_ha in normalized_device or normalized_device in normalized_ha:
+                    ha_device = ha_devices_map[ha_name]
+                    break
+        
+        if ha_device:
+            device["ha_online"] = ha_device.get("online", False)
+            device["ha_entities"] = ha_device.get("entities", [])
+            device["ha_firmware"] = ha_device.get("firmware_version")
+            device["ha_ip"] = ha_device.get("ip_address")
+            # Override status if online in HA
+            if ha_device.get("online"):
+                device["status"] = "online"
+        else:
+            device["ha_online"] = None
+            device["ha_entities"] = []
+            device["ha_firmware"] = None
+            device["ha_ip"] = None
+        
+        # Fetch platform and board from YAML (always try to get board)
+        try:
+            yaml_response = await get_yaml_config(device_name)
+            if yaml_response.get("success") and yaml_response.get("yaml"):
+                yaml_content = yaml_response["yaml"]
+                import re
+                
+                # Extract platform (esp32, esp32-s2, esp32-s3, esp32-c3, esp8266, rp2040, host)
+                if device.get("platform") is None or device.get("platform") == "unknown":
+                    # Try esp32 variants first (esp32-s3, esp32-s2, esp32-c3, esp32)
+                    platform_match = re.search(r'^(esp32(?:-s[23]|-c[36]|-h[24]|-p4)?|esp8266|rp2040|host):', yaml_content, re.MULTILINE | re.IGNORECASE)
+                    if platform_match:
+                        platform_raw = platform_match.group(1).lower()
+                        # Normalize platform name
+                        if platform_raw.startswith("esp32"):
+                            device["platform"] = "ESP32"
+                        elif platform_raw == "esp8266":
+                            device["platform"] = "ESP8266"
+                        elif platform_raw == "rp2040":
+                            device["platform"] = "RP2040"
+                        elif platform_raw == "host":
+                            device["platform"] = "HOST"
+                
+                # Always try to extract board from YAML
+                board_match = re.search(r'board:\s*([^\n\r]+)', yaml_content)
+                if board_match:
+                    device["board"] = board_match.group(1).strip()
+                    
+        except Exception as e:
+            logger.debug(f"Failed to parse YAML for {device_name}: {e}")
     
     # Update MQTT device count
     if ENABLE_MQTT_DISCOVERY:
@@ -472,7 +847,7 @@ async def list_devices():
 
 @app.get("/api/device/{device_name}")
 async def get_device(device_name: str):
-    """Get device details"""
+    """Get device details with YAML-parsed platform and board"""
     devices = await get_devices_from_dashboard()
     
     for device in devices:
@@ -489,10 +864,37 @@ async def get_device(device_name: str):
             except Exception as e:
                 logger.error(f"Failed to fetch HA entities: {e}")
             
+            # Parse YAML to extract platform and board
+            platform = None
+            board = None
+            try:
+                # Use the existing YAML endpoint
+                yaml_response = await get_yaml_config(device_name)
+                if yaml_response.get("success") and yaml_response.get("yaml"):
+                    yaml_content = yaml_response["yaml"]
+                    logger.info(f"YAML content for {device_name}: {yaml_content[:200]}")
+                    # Extract platform (esp32, esp8266, rp2040, host)
+                    import re
+                    platform_match = re.search(r'^(esp32|esp8266|rp2040|host):', yaml_content, re.MULTILINE)
+                    if platform_match:
+                        platform = platform_match.group(1).upper()
+                        logger.info(f"Detected platform: {platform}")
+                    # Extract board - can be indented under platform
+                    board_match = re.search(r'board:\s*([^\n]+)', yaml_content)
+                    if board_match:
+                        board = board_match.group(1).strip()
+                        logger.info(f"Detected board: {board}")
+                else:
+                    logger.warning(f"YAML fetch failed: {yaml_response.get('error', 'Unknown error')}")
+            except Exception as e:
+                logger.error(f"Failed to parse YAML for platform/board: {e}", exc_info=True)
+            
             return {
                 "success": True,
                 "device": {
                     **device,
+                    "platform": platform or device.get("platform"),
+                    "board": board or device.get("board"),
                     "ha_entities": ha_entities
                 }
             }
@@ -501,101 +903,186 @@ async def get_device(device_name: str):
 
 
 async def fetch_ha_entities_for_device(device_name: str, integrations: list) -> list:
-    """Fetch Home Assistant entities for a device"""
+    """Fetch Home Assistant entities for a device via MCP"""
     entities = []
     
     if not HA_MCP_URL:
         return entities
     
     try:
-        # Search for entities matching device name
         async with aiohttp.ClientSession() as session:
-            # Use MCP to search entities
-            url = HA_MCP_URL
             payload = {
                 "jsonrpc": "2.0",
                 "id": 1,
                 "method": "tools/call",
                 "params": {
                     "name": "ha_search_entities",
-                    "arguments": {"query": device_name}
+                    "arguments": {"query": device_name, "limit": 50}
                 }
             }
+            headers = {
+                "Content-Type": "application/json",
+                "Accept": "application/json, text/event-stream"
+            }
             
-            async with session.post(url, json=payload, timeout=aiohttp.ClientTimeout(total=10)) as response:
+            async with session.post(HA_MCP_URL, json=payload, headers=headers, timeout=aiohttp.ClientTimeout(total=30)) as response:
                 if response.status == 200:
-                    data = await response.json()
-                    # Parse MCP response
-                    if "result" in data:
-                        content = data["result"].get("content", [])
-                        for item in content:
-                            if item.get("type") == "text":
-                                # Parse entities from text
-                                text = item.get("text", "")
-                                # Entity format: entity_id, friendly_name, state
-                                for line in text.split("\n"):
-                                    if line.strip() and device_name.lower() in line.lower():
-                                        parts = line.split("|")
-                                        if len(parts) >= 3:
-                                            entities.append({
-                                                "entity_id": parts[0].strip(),
-                                                "friendly_name": parts[1].strip() if len(parts) > 1 else parts[0].strip(),
-                                                "state": parts[2].strip() if len(parts) > 2 else "unknown",
-                                                "domain": parts[0].strip().split(".")[0] if "." in parts[0] else "unknown"
-                                            })
+                    text = await response.text()
+                    # Parse SSE format - skip ping and empty lines
+                    for line in text.split('\n'):
+                        if line.startswith(':') or not line.strip():
+                            continue  # Skip ping and empty lines
+                        if line.startswith('data: '):
+                            try:
+                                data = json.loads(line[6:])
+                                if 'result' in data and 'content' in data['result']:
+                                    content = data['result']['content'][0]
+                                    if 'text' in content:
+                                        result = json.loads(content['text'])
+                                        if result.get('data', {}).get('success') and result.get('data', {}).get('results', []):
+                                            for ent in result.get('data', {}).get('results', []):
+                                                entities.append({
+                                                    "entity_id": ent.get('entity_id', ''),
+                                                    "friendly_name": ent.get('friendly_name', ent.get('entity_id', '')),
+                                                    "state": ent.get('state', 'unknown'),
+                                                    "domain": ent.get('domain', ent.get('entity_id', '').split('.')[0] if '.' in ent.get('entity_id', '') else 'unknown')
+                                                })
+                            except:
+                                pass
     except Exception as e:
-        logger.error(f"Failed to fetch HA entities: {e}")
+        logger.error(f"Failed to fetch HA entities for {device_name}: {e}")
     
     return entities
 
 
-@app.get("/api/yaml/{device_name}")
-async def get_yaml(device_name: str):
-    """Get YAML configuration for a device"""
+@app.get("/api/ha/devices")
+async def get_ha_devices():
+    """Get all ESPHome devices from Home Assistant with online status"""
     try:
-        # Get YAML from ESPHome Dashboard edit endpoint
-        auth = aiohttp.BasicAuth(ESPHOME_DASHBOARD_USER, ESPHOME_DASHBOARD_PASS)
-        async with aiohttp.ClientSession(auth=auth) as session:
-            url = f"{ESPHOME_DASHBOARD_URL}/edit?configuration={device_name}.yaml"
-            async with session.get(url, timeout=aiohttp.ClientTimeout(total=30)) as response:
+        async with aiohttp.ClientSession() as session:
+            payload = {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "tools/call",
+                "params": {
+                    "name": "ha_search_entities",
+                    "arguments": {"query": "esphome", "limit": 50}  # Reduced from 200 for faster response
+                }
+            }
+            headers = {
+                "Content-Type": "application/json",
+                "Accept": "application/json, text/event-stream"
+            }
+            
+            async with session.post(HA_MCP_URL, json=payload, headers=headers, timeout=aiohttp.ClientTimeout(total=30)) as response:
                 if response.status == 200:
-                    yaml_content = await response.text()
-                    state["yaml_configs"][device_name] = yaml_content
-                    return {
-                        "success": True,
-                        "device": device_name,
-                        "yaml": yaml_content,
-                        "length": len(yaml_content)
-                    }
-                else:
-                    return {"success": False, "error": f"HTTP {response.status}", "device": device_name}
-    except Exception as e:
-        logger.error(f"Failed to get YAML for {device_name}: {e}")
-        return {"success": False, "error": str(e), "device": device_name}
-
-
-@app.post("/api/yaml/{device_name}")
-async def save_yaml(device_name: str, yaml_data: dict):
-    """Save YAML configuration for a device"""
-    yaml_content = yaml_data.get("yaml", "")
-    if not yaml_content:
-        raise HTTPException(status_code=400, detail="YAML content required")
-    
-    try:
-        # Save to ESPHome Dashboard edit endpoint
-        auth = aiohttp.BasicAuth(ESPHOME_DASHBOARD_USER, ESPHOME_DASHBOARD_PASS)
-        async with aiohttp.ClientSession(auth=auth) as session:
-            url = f"{ESPHOME_DASHBOARD_URL}/edit?configuration={device_name}.yaml"
-            async with session.post(url, data=yaml_content, timeout=aiohttp.ClientTimeout(total=30)) as response:
-                if response.status == 200:
-                    state["yaml_configs"][device_name] = yaml_content
-                    return {"success": True, "device": device_name, "message": "YAML saved successfully"}
-                else:
                     text = await response.text()
-                    return {"success": False, "error": f"HTTP {response.status}: {text}", "device": device_name}
+                    # Parse SSE format - skip ping and empty lines
+                    for line in text.split('\n'):
+                        if line.startswith(':') or not line.strip():
+                            continue  # Skip ping and empty lines
+                        if line.startswith('data: '):
+                            try:
+                                data = json.loads(line[6:])
+                                if 'result' in data and 'content' in data['result']:
+                                    content = data['result']['content'][0]
+                                    if 'text' in content:
+                                        result = json.loads(content['text'])
+                                        if result.get('data', {}).get('success') and result.get('data', {}).get('results', []):
+                                            # Group entities by device
+                                            devices = {}
+                                            for ent in result.get('data', {}).get('results', []):
+                                                entity_id = ent.get('entity_id', '')
+                                                friendly_name = ent.get('friendly_name', '')
+                                                state = ent.get('state', '')
+                                                domain = ent.get('domain', '')
+                                                
+                                                # Skip non-device entities
+                                                if 'remote_manager' in entity_id or 'remote_builder' in entity_id:
+                                                    continue
+                                                
+                                                # Extract device name from entity_id
+                                                # e.g., "switch.esp32_s3_box_3_mute_responses" -> "esp32_s3_box_3"
+                                                # e.g., "update.esphome_web_30a7dc_firmware" -> "esphome_web_30a7dc"
+                                                parts = entity_id.split('.')
+                                                if len(parts) > 1:
+                                                    # Remove domain prefix and get device name
+                                                    entity_name = parts[1]
+                                                    
+                                                    # Try to extract device name
+                                                    # Common patterns: device_name_sensor, device_name_switch, etc.
+                                                    device_name = entity_name
+                                                    
+                                                    # Known device patterns - try to match entity_id to device names
+                                                    known_devices = [
+                                                        'esp32_s3_box_3',
+                                                        'multisensor',
+                                                        'adr1',
+                                                        'esp_radar2',
+                                                        'test_compile',
+                                                        'esphome_web',
+                                                        'esp_radar'  # Added for esp_radar entities
+                                                    ]
+                                                    
+                                                    # Try exact match first
+                                                    for known in known_devices:
+                                                        if known in entity_name:
+                                                            device_name = known
+                                                            break
+                                                    else:
+                                                        # Try matching entity_id patterns like "multisensor_multisensor_"
+                                                        # Extract the device name from patterns
+                                                        entity_parts = entity_name.split('_')
+                                                        # Try first part for simple device names
+                                                        if len(entity_parts) >= 1:
+                                                            first_part = entity_parts[0]
+                                                            for known in known_devices:
+                                                                if known.startswith(first_part):
+                                                                    device_name = known
+                                                                    break
+                                                    
+                                                    if device_name not in devices:
+                                                        devices[device_name] = {
+                                                            "name": device_name,
+                                                            "friendly_name": friendly_name.split()[0] if friendly_name else device_name,
+                                                            "entities": [],
+                                                            "online": False,
+                                                            "firmware_version": None,
+                                                            "ip_address": None
+                                                        }
+                                                    
+                                                    devices[device_name]["entities"].append({
+                                                        "entity_id": entity_id,
+                                                        "friendly_name": friendly_name,
+                                                        "state": state,
+                                                        "domain": domain
+                                                    })
+                                                    
+                                                    # Check for online status
+                                                    if 'connected' in entity_id or 'status' in entity_id:
+                                                        if state in ['on', 'online', 'healthy']:
+                                                            devices[device_name]["online"] = True
+                                                    
+                                                    # Check for firmware version
+                                                    if 'version' in entity_id.lower() and 'esphome' not in entity_id.lower():
+                                                        if state not in ['unknown', 'unavailable']:
+                                                            devices[device_name]["firmware_version"] = state
+                                                    
+                                                    # Check for IP address
+                                                    if 'ip' in entity_id.lower() and state not in ['unknown', 'unavailable']:
+                                                        devices[device_name]["ip_address"] = state
+                                            
+                                            return {"success": True, "devices": list(devices.values())}
+                            except Exception as e:
+                                logger.error(f"Failed to parse HA response: {e}")
+                                continue
     except Exception as e:
-        logger.error(f"Failed to save YAML for {device_name}: {e}")
-        return {"success": False, "error": str(e), "device": device_name}
+        logger.error(f"Failed to get HA devices: {e}", exc_info=True)
+    
+    return {"success": False, "error": "Failed to fetch HA devices", "devices": []}
+
+
+# YAML endpoints moved to line 1154+ - using call_esphome_api helper
 
 
 @app.post("/api/compile/{device_name}")
@@ -775,9 +1262,116 @@ async def get_chip_types():
     return {"success": True, "chips": ESP_CHIP_TYPES}
 
 
+@app.get("/api/platforms")
+async def get_platforms():
+    """Get full list of supported platforms and boards"""
+    return {"success": True, "platforms": ESP_PLATFORMS}
+
+
+@app.get("/api/boards/{platform}")
+async def get_boards_for_platform(platform: str):
+    """Get boards for a specific platform"""
+    platform_upper = platform.upper().replace("-", "_")
+    # Handle both ESP32 and ESP32-S2, etc.
+    if platform_upper.startswith("ESP32_"):
+        platform_upper = platform_upper.replace("_", "-")
+    
+    if platform_upper in ESP_PLATFORMS:
+        return {
+            "success": True,
+            "platform": platform_upper,
+            "name": ESP_PLATFORMS[platform_upper]["name"],
+            "description": ESP_PLATFORMS[platform_upper]["description"],
+            "boards": ESP_PLATFORMS[platform_upper]["boards"]
+        }
+    
+    # Try to find by name match
+    for key, value in ESP_PLATFORMS.items():
+        if value["name"].upper() == platform.upper():
+            return {
+                "success": True,
+                "platform": key,
+                "name": value["name"],
+                "description": value["description"],
+                "boards": value["boards"]
+            }
+    
+    return {"success": False, "error": f"Platform '{platform}' not found"}
+
+
+@app.get("/api/compile/queue")
+async def get_compile_queue():
+    """Get current compile queue status"""
+    with compile_lock:
+        current = compile_current.copy()
+    
+    # Get queued tasks
+    queued_tasks = []
+    for task_id, task_data in update_tasks.items():
+        if task_data.get("status") == "queued":
+            queued_tasks.append({
+                "task_id": task_id,
+                "device": task_data.get("device"),
+                "yaml_file": task_data.get("yaml_file"),
+                "created": task_data.get("created")
+            })
+    
+    return {
+        "current": current,
+        "queue_length": compile_queue.qsize(),
+        "queued_tasks": queued_tasks
+    }
+
+
+@app.post("/api/compile/{task_id}/cancel")
+async def cancel_compile(task_id: str):
+    """Cancel a running or queued compile task"""
+    try:
+        if task_id not in update_tasks:
+            return {"success": False, "error": "Task not found"}
+        
+        task = update_tasks[task_id]
+        current_status = task.get("status", "")
+        
+        # If task is queued, just mark as cancelled
+        if current_status == "queued":
+            task["status"] = "cancelled"
+            task["result"] = "cancelled"
+            logger.info(f"Cancelled queued task {task_id}")
+            return {"success": True, "message": "Task cancelled"}
+        
+        # If task is compiling, try to kill the process
+        if current_status == "compiling":
+            task["status"] = "cancelled"
+            task["result"] = "cancelled"
+            
+            # Try to kill the compile process
+            try:
+                # Find and kill the compile process
+                subprocess.run(
+                    ["docker", "exec", "esphome", "pkill", "-f", f"compile.*{task.get('yaml_file', '')}"],
+                    capture_output=True,
+                    timeout=5
+                )
+                logger.info(f"Killed compile process for task {task_id}")
+            except Exception as e:
+                logger.warning(f"Failed to kill compile process: {e}")
+            
+            # Broadcast cancellation
+            await broadcast_progress(task_id, 0, "cancelled", "Compile cancelled by user", task.get("device_name", ""))
+            
+            return {"success": True, "message": "Compile cancelled"}
+        
+        return {"success": False, "error": f"Cannot cancel task in {current_status} state"}
+    
+    except Exception as e:
+        logger.error(f"Failed to cancel compile: {e}")
+        return {"success": False, "error": str(e)}
+
+
 @app.post("/api/compile/{device_name}/async")
 async def compile_device_async(device_name: str, background_tasks: BackgroundTasks):
-    """Start compile in background and return task ID"""
+    """Start compile in background and return task ID (queued for sequential processing)"""
     try:
         # Get YAML file
         yaml_file = None
@@ -795,29 +1389,35 @@ async def compile_device_async(device_name: str, background_tasks: BackgroundTas
         update_tasks[task_id] = {
             "device": device_name,
             "yaml_file": yaml_file,
-            "status": "starting",
+            "status": "queued",
             "progress": 0,
             "result": None,
             "created": datetime.now().isoformat()
         }
         
-        # Run compile in thread with logs
-        thread = threading.Thread(
-            target=run_compile_with_logs,
-            args=(task_id, device_name, yaml_file)
-        )
-        thread.daemon = True
-        thread.start()
+        # Check queue position
+        queue_position = compile_queue.qsize()
+        if queue_position > 0:
+            update_tasks[task_id]["queue_position"] = queue_position
+            logger.info(f"Compile queued for {device_name} (task_id: {task_id}, position: {queue_position})")
+        
+        # Add to compile queue (will be processed sequentially)
+        compile_queue.put({
+            "task_id": task_id,
+            "device_name": device_name,
+            "yaml_file": yaml_file
+        })
         
         return {
             "success": True,
             "task_id": task_id,
             "device": device_name,
             "yaml_file": yaml_file,
-            "message": "Compile started in background"
+            "queue_position": queue_position,
+            "message": "Compile queued for sequential processing"
         }
     except Exception as e:
-        logger.error(f"Failed to start compile for {device_name}: {e}")
+        logger.error(f"Failed to queue compile for {device_name}: {e}")
         return {"success": False, "error": str(e)}
 
 
@@ -952,25 +1552,86 @@ async def websocket_logs(websocket: WebSocket):
 async def get_yaml_config(device_name: str):
     """Get YAML configuration for a device"""
     try:
-        # Get YAML file from ESPHome Dashboard
-        result = await call_esphome_api(f"/edit?configuration={device_name}.yaml")
-        return {"success": True, "yaml": result}
+        # Try to get YAML file from device state cache first
+        yaml_file = f"{device_name}.yaml"
+        
+        # Check if device exists in state and has configuration
+        for device in state.get("devices", []):
+            if device.get("name") == device_name and device.get("configuration"):
+                yaml_file = device["configuration"]
+                break
+        
+        # Get YAML file from ESPHome Dashboard (returns plain text, not JSON)
+        url = f"{ESPHOME_DASHBOARD_URL}/edit?configuration={yaml_file}"
+        auth = aiohttp.BasicAuth(ESPHOME_DASHBOARD_USER, ESPHOME_DASHBOARD_PASS)
+        
+        async with aiohttp.ClientSession(auth=auth) as session:
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=30)) as response:
+                if response.status == 200:
+                    yaml_content = await response.text()
+                    state["yaml_configs"][device_name] = yaml_content
+                    return {
+                        "success": True,
+                        "device": device_name,
+                        "yaml": yaml_content,
+                        "length": len(yaml_content)
+                    }
+                else:
+                    return {"success": False, "error": f"HTTP {response.status}", "device": device_name}
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        logger.error(f"Failed to get YAML for {device_name}: {e}")
+        return {"success": False, "error": str(e), "device": device_name}
 
 
 @app.post("/api/yaml/{device_name}")
-async def save_yaml_config(device_name: str, yaml_content: str):
+async def save_yaml_config(device_name: str, request: Request):
     """Save YAML configuration for a device"""
     try:
-        # Save YAML to ESPHome Dashboard
-        result = await call_esphome_api(
-            f"/edit?configuration={device_name}.yaml",
-            method="POST",
-            data={"content": yaml_content}
-        )
-        return {"success": True, "message": "YAML saved"}
+        # Parse JSON body
+        body = await request.json()
+        yaml_content = body.get("yaml", "")
+        
+        if not yaml_content:
+            return {"success": False, "error": "YAML content required"}
+        
+        # Save YAML to ESPHome Dashboard (form-encoded, not JSON)
+        url = f"{ESPHOME_DASHBOARD_URL}/edit?configuration={device_name}.yaml"
+        auth = aiohttp.BasicAuth(ESPHOME_DASHBOARD_USER, ESPHOME_DASHBOARD_PASS)
+        
+        async with aiohttp.ClientSession(auth=auth) as session:
+            data = aiohttp.FormData()
+            data.add_field('content', yaml_content)
+            
+            async with session.post(url, data=data, timeout=aiohttp.ClientTimeout(total=30)) as response:
+                if response.status == 200:
+                    state["yaml_configs"][device_name] = yaml_content
+                    return {"success": True, "device": device_name, "message": "YAML saved successfully"}
+                else:
+                    text = await response.text()
+                    return {"success": False, "error": f"HTTP {response.status}: {text}", "device": device_name}
     except Exception as e:
+        logger.error(f"Failed to save YAML for {device_name}: {e}")
+        return {"success": False, "error": str(e), "device": device_name}
+
+
+@app.delete("/api/yaml/{device_name}")
+async def delete_device(device_name: str):
+    """Delete a device configuration file"""
+    try:
+        # Delete from ESPHome Dashboard
+        url = f"{ESPHOME_DASHBOARD_URL}/delete?configuration={device_name}.yaml"
+        auth = aiohttp.BasicAuth(ESPHOME_API_USER, ESPHOME_API_PASS)
+        
+        async with aiohttp.ClientSession(auth=auth) as session:
+            async with session.post(url) as response:
+                if response.status == 200:
+                    logger.info(f"Deleted device: {device_name}")
+                    return {"success": True, "message": f"Device {device_name} deleted"}
+                else:
+                    text = await response.text()
+                    return {"success": False, "error": f"HTTP {response.status}: {text}"}
+    except Exception as e:
+        logger.error(f"Failed to delete {device_name}: {e}")
         return {"success": False, "error": str(e)}
 
 
@@ -1064,6 +1725,565 @@ async def save_secrets(secrets_data: dict):
     except Exception as e:
         logger.error(f"Failed to save secrets: {e}")
         return {"success": False, "error": str(e)}
+
+@app.post("/api/validate/yaml")
+async def validate_yaml(yaml_data: dict):
+    """Validate YAML syntax and ESPHome configuration"""
+    try:
+        import yaml
+        yaml_content = yaml_data.get("yaml", "")
+        
+        # Basic YAML syntax validation
+        try:
+            parsed = yaml.safe_load(yaml_content)
+        except yaml.YAMLError as e:
+            # Extract line number from Mark object
+            line_num = None
+            if hasattr(e, 'problem_mark') and e.problem_mark:
+                line_num = e.problem_mark.line + 1  # Mark.line is 0-indexed
+            return {
+                "success": False,
+                "valid": False,
+                "error": f"YAML syntax error: {str(e)}",
+                "line": line_num
+            }
+        
+        # ESPHome-specific validation
+        errors = []
+        warnings = []
+        
+        if parsed:
+            # Check for required fields
+            if 'esphome' not in parsed:
+                errors.append("Missing 'esphome' section")
+            else:
+                esphome = parsed['esphome']
+                if 'name' not in esphome:
+                    warnings.append("Missing 'name' in esphome section (will use default)")
+            
+            # Check for platform
+            if 'esp32' not in parsed and 'esp8266' not in parsed and 'rp2040' not in parsed:
+                errors.append("Missing platform configuration (esp32/esp8266/rp2040)")
+            
+            # Extract used pins for visualization
+            used_pins = extract_pins_from_yaml(parsed)
+            
+            # Check for common issues
+            if 'logger' in parsed:
+                if parsed['logger'].get('level') == 'VERY_VERBOSE':
+                    warnings.append("VERY_VERBOSE logging can slow down the device")
+            
+            # Check for WiFi credentials
+            if 'wifi' in parsed:
+                wifi = parsed['wifi']
+                if 'ssid' not in wifi and 'networks' not in wifi:
+                    warnings.append("WiFi configuration missing SSID")
+            
+            # Check for API/Web server
+            if 'api' not in parsed and 'web_server' not in parsed:
+                warnings.append("Consider adding 'api' or 'web_server' for Home Assistant integration")
+        
+        return {
+            "success": True,
+            "valid": len(errors) == 0,
+            "errors": errors,
+            "warnings": warnings,
+            "used_pins": used_pins,
+            "components": list(parsed.keys()) if parsed else []
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to validate YAML: {e}")
+        return {"success": False, "valid": False, "error": str(e)}
+
+
+def extract_pins_from_yaml(parsed_yaml):
+    """Extract used pins from YAML configuration"""
+    used_pins = {
+        "gpio": [],
+        "i2c": [],
+        "spi": [],
+        "uart": [],
+        "other": []
+    }
+    
+    def extract_pins(obj, prefix=""):
+        """Recursively extract pin configurations"""
+        if isinstance(obj, dict):
+            for key, value in obj.items():
+                if key in ["pin", "scl", "sda", "mosi", "miso", "clk", "cs", "tx", "rx"]:
+                    if isinstance(value, (int, str)):
+                        pin_type = key
+                        if key in ["scl", "sda"]:
+                            pin_type = "i2c"
+                        elif key in ["mosi", "miso", "clk", "cs"]:
+                            pin_type = "spi"
+                        elif key in ["tx", "rx"]:
+                            pin_type = "uart"
+                        else:
+                            pin_type = "gpio"
+                        
+                        used_pins[pin_type].append({
+                            "pin": value,
+                            "component": prefix,
+                            "function": key
+                        })
+                elif isinstance(value, (dict, list)):
+                    extract_pins(value, f"{prefix}.{key}" if prefix else key)
+        elif isinstance(obj, list):
+            for item in obj:
+                extract_pins(item, prefix)
+    
+    if parsed_yaml:
+        extract_pins(parsed_yaml)
+    
+    # Remove duplicates and sort
+    for pin_type in used_pins:
+        seen = set()
+        unique = []
+        for pin_info in used_pins[pin_type]:
+            key = (pin_info["pin"], pin_info["function"])
+            if key not in seen:
+                seen.add(key)
+                unique.append(pin_info)
+        used_pins[pin_type] = unique
+    
+    return used_pins
+
+
+@app.get("/api/chip/pins/{board}")
+async def get_chip_pinout(board: str):
+    """Get pin configuration for a specific board"""
+    # Pin definitions for common boards
+    PINOUTS = {
+        "esp32dev": {
+            "name": "ESP32 DevKit",
+            "gpio": list(range(0, 40)),
+            "adc1": [32, 33, 34, 35, 36, 39],
+            "adc2": [4, 0, 2, 13, 12, 14, 15, 25, 26, 27],
+            "touch": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+            "dac": [25, 26],
+            "i2c": {"sda": [21], "scl": [22]},
+            "spi": {"mosi": [23], "miso": [19], "clk": [18], "cs": [5]},
+            "uart": {"tx": [1, 17], "rx": [3, 16]},
+            "pwm": list(range(0, 16)),
+            "special": {
+                "TX0": 1, "RX0": 3,
+                "TX2": 17, "RX2": 16,
+                "EN": None,  # Reset
+                "BOOT": 0,  # Boot button
+            }
+        },
+        "nodemcu-32s": {
+            "name": "NodeMCU-32S",
+            "gpio": list(range(0, 40)),
+            "led_builtin": 2,
+            "i2c": {"sda": [21], "scl": [22]},
+            "special": {"D0": 26, "D1": 22, "D2": 21}
+        },
+        "esp32-s3-devkitc-1": {
+            "name": "ESP32-S3 DevKitC-1",
+            "gpio": list(range(0, 49)),
+            "usb": {"usb_dp": 19, "usb_dm": 20},
+            "i2c": {"sda": [8], "scl": [9]},
+            "spi": {"mosi": [35], "miso": [37], "clk": [36], "cs": [34]},
+            "uart": {"tx": [43], "rx": [44]},
+            "special": {"BOOT": 0, "RGB_LED": 48}
+        },
+        "esp32-c3-devkitc-02": {
+            "name": "ESP32-C3 DevKitC-02",
+            "gpio": list(range(0, 22)),
+            "usb": {"usb_dp": 18, "usb_dm": 19},
+            "i2c": {"sda": [8], "scl": [9]},
+            "special": {"BOOT": 9, "RGB_LED": 8}
+        },
+        "wemos_d1_mini": {
+            "name": "Wemos D1 Mini (ESP8266)",
+            "gpio": [0, 1, 2, 3, 4, 5, 12, 13, 14, 15, 16],
+            "adc": [17],  # A0
+            "i2c": {"sda": [4], "scl": [5]},
+            "spi": {"mosi": [13], "miso": [12], "clk": [14], "cs": [15]},
+            "special": {"D1": 5, "D2": 4, "D3": 0, "D4": 2, "D5": 14, "D6": 12, "D7": 13, "D8": 15}
+        },
+        "nodemcu": {
+            "name": "NodeMCU (ESP8266)",
+            "gpio": [0, 1, 2, 3, 4, 5, 12, 13, 14, 15, 16],
+            "adc": [17],  # A0
+            "i2c": {"sda": [4], "scl": [5]},
+            "special": {"D1": 5, "D2": 4, "D3": 0, "D4": 2, "D5": 14, "D6": 12, "D7": 13, "D8": 15, "LED": 16}
+        }
+    }
+    
+    # Return pinout if found, otherwise generic
+    if board in PINOUTS:
+        return {"success": True, "pinout": PINOUTS[board]}
+    else:
+        return {
+            "success": True,
+            "pinout": {
+                "name": board,
+                "gpio": list(range(0, 40)),
+                "note": "Generic pinout - verify with datasheet"
+            }
+        }
+
+
+@app.get("/api/templates")
+async def get_templates():
+    """Get available YAML templates organized by category"""
+    templates = {
+        "sensors": {
+            "name": "Szenzorok",
+            "icon": "sensors",
+            "items": [
+                {
+                    "id": "dht22",
+                    "name": "DHT22 Hőmérő/Páratartalom",
+                    "description": "Hőmérséklet és páratartalom mérés",
+                    "yaml": """sensor:
+  - platform: dht
+    pin: GPIOXX
+    temperature:
+      name: "${device_name} Hőmérséklet"
+    humidity:
+      name: "${device_name} Páratartalom"
+    update_interval: 60s
+"""
+                },
+                {
+                    "id": "ds18b20",
+                    "name": "DS18B20 Digitális Hőmérő",
+                    "description": "Egyvezetékes digitális hőmérő",
+                    "yaml": """sensor:
+  - platform: dallas
+    pin: GPIOXX
+    address: XX XX XX XX XX XX XX XX
+    name: "${device_name} Hőmérséklet"
+"""
+                },
+                {
+                    "id": "bme280",
+                    "name": "BME280 Környezeti Szenzor",
+                    "description": "Hőmérséklet, páratartalom, légnyomás",
+                    "yaml": """i2c:
+  sda: GPIOXX
+  scl: GPIOXX
+
+sensor:
+  - platform: bme280_i2c
+    temperature:
+      name: "${device_name} Hőmérséklet"
+    humidity:
+      name: "${device_name} Páratartalom"
+    pressure:
+      name: "${device_name} Légnyomás"
+    address: 0x76
+    update_interval: 60s
+"""
+                },
+                {
+                    "id": "hdc1080",
+                    "name": "HDC1080 Környezeti Szenzor",
+                    "description": "Hőmérséklet és páratartalom",
+                    "yaml": """i2c:
+  sda: GPIOXX
+  scl: GPIOXX
+
+sensor:
+  - platform: hdc1080
+    temperature:
+      name: "${device_name} Hőmérséklet"
+    humidity:
+      name: "${device_name} Páratartalom"
+    update_interval: 60s
+"""
+                }
+            ]
+        },
+        "presence": {
+            "name": "Jelenlét Szenzorok",
+            "icon": "person",
+            "items": [
+                {
+                    "id": "ble_presence",
+                    "name": "BLE Jelenlét Szenzor",
+                    "description": "Bluetooth eszközök jelenlétének figyelése",
+                    "yaml": """esp32_ble_tracker:
+  scan_parameters:
+    interval: 1s
+    window: 200ms
+    active: true
+
+sensor:
+  - platform: ble_rssi
+    mac_address: XX:XX:XX:XX:XX:XX
+    name: "${device_name} Eszköz RSSI"
+    
+binary_sensor:
+  - platform: ble_presence
+    mac_address: XX:XX:XX:XX:XX:XX
+    name: "${device_name} Eszköz Jelenlét"
+"""
+                },
+                {
+                    "id": "ble_ibeacon",
+                    "name": "BLE iBeacon",
+                    "description": "iBeacon alapú jelenlét figyelés",
+                    "yaml": """esp32_ble_tracker:
+
+binary_sensor:
+  - platform: ble_presence
+    ibeacon_uuid: XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
+    ibeacon_major: XXXX
+    ibeacon_minor: XXXX
+    name: "${device_name} iBeacon Jelenlét"
+"""
+                },
+                {
+                    "id": "ble_room_tracking",
+                    "name": "BLE Szoba követés",
+                    "description": "Több szoba jelenlétének követése",
+                    "yaml": """esp32_ble_tracker:
+  scan_parameters:
+    interval: 300ms
+    window: 200ms
+    active: true
+
+# Szoba követés konfiguráció
+binary_sensor:
+  - platform: ble_presence
+    mac_address: XX:XX:XX:XX:XX:XX
+    name: "${device_name} Telefon Jelenlét"
+    
+  - platform: template
+    name: "${device_name} Szoba"
+    lambda: |-
+      if (id(ble_rssi).state > -70) {
+        return {"nappali"};
+      } else if (id(ble_rssi).state > -85) {
+        return {"konyha"};
+      } else {
+        return {"nincs"};
+      }
+    
+sensor:
+  - platform: ble_rssi
+    mac_address: XX:XX:XX:XX:XX:XX
+    id: ble_rssi
+    name: "${device_name} Telefon RSSI"
+    filters:
+      - throttle: 1s
+      - median:
+          window_size: 5
+          send_every: 2
+"""
+                },
+                {
+                    "id": "radar_presence",
+                    "name": "Radar Jelenlét (HLK-LD2410)",
+                    "description": "Mikrohullámú radar jelenlét érzékelő",
+                    "yaml": """uart:
+  tx_pin: GPIOXX
+  rx_pin: GPIOXX
+  baud_rate: 256000
+  parity: NONE
+  stop_bits: 1
+
+ld2410:
+
+binary_sensor:
+  - platform: ld2410
+    has_target:
+      name: "${device_name} Jelenlét"
+    has_moving_target:
+      name: "${device_name} Mozgás"
+    has_static_target:
+      name: "${device_name} Álló jelenlét"
+
+sensor:
+  - platform: ld2410
+    moving_distance:
+      name: "${device_name} Mozgó távolság"
+    static_distance:
+      name: "${device_name} Álló távolság"
+"""
+                }
+            ]
+        },
+        "output": {
+            "name": "Kimenetek",
+            "icon": "power",
+            "items": [
+                {
+                    "id": "gpio_output",
+                    "name": "GPIO Kimenet",
+                    "description": "Egyszerű GPIO kimenet",
+                    "yaml": """output:
+  - platform: gpio
+    pin: GPIOXX
+    id: "${device_name}_output"
+    
+light:
+  - platform: binary
+    name: "${device_name} Világítás"
+    output: "${device_name}_output"
+"""
+                },
+                {
+                    "id": "pwm_output",
+                    "name": "PWM Kimenet",
+                    "description": "PWM vezérelt kimenet (pl. LED)",
+                    "yaml": """output:
+  - platform: ledc
+    pin: GPIOXX
+    frequency: 1000Hz
+    id: "${device_name}_pwm"
+    
+light:
+  - platform: monochromatic
+    name: "${device_name} LED"
+    output: "${device_name}_pwm"
+"""
+                },
+                {
+                    "id": "ac_dimmer",
+                    "name": "AC Dimmer",
+                    "description": "Váltakozó feszültség dimmer",
+                    "yaml": """output:
+  - platform: ac_dimmer
+    id: "${device_name}_dimmer"
+    gate_pin: GPIOXX
+    zero_cross_pin: GPIOXX
+    
+light:
+  - platform: monochromatic
+    name: "${device_name} Izzó"
+    output: "${device_name}_dimmer"
+"""
+                }
+            ]
+        },
+        "display": {
+            "name": "Kijelzők",
+            "icon": "display",
+            "items": [
+                {
+                    "id": "oled_ssd1306",
+                    "name": "OLED SSD1306",
+                    "description": "0.96/1.3 colos OLED kijelző",
+                    "yaml": """i2c:
+  sda: GPIOXX
+  scl: GPIOXX
+
+display:
+  - platform: ssd1306_i2c
+    model: "SSD1306 128x64"
+    address: 0x3C
+    lambda: |-
+      it.printf(0, 0, id(font), "Hőm: %.1f°C", id(temp_sensor).state);
+      it.printf(0, 20, id(font), "Pára: %.1f%%", id(humidity_sensor).state);
+
+font:
+  - file: "gfonts://Roboto"
+    id: font
+    size: 16
+"""
+                },
+                {
+                    "id": "tft_ili9341",
+                    "name": "TFT ILI9341",
+                    "description": "2.4 colos TFT kijelző",
+                    "yaml": """spi:
+  clk_pin: GPIOXX
+  mosi_pin: GPIOXX
+  miso_pin: GPIOXX
+
+display:
+  - platform: ili9341
+    cs_pin: GPIOXX
+    dc_pin: GPIOXX
+    reset_pin: GPIOXX
+    lambda: |-
+      it.fill(Color(0, 0, 0));
+      it.printf(0, 0, id(font), Color(255, 255, 255), "Hello!");
+      
+font:
+  - file: "gfonts://Roboto"
+    id: font
+    size: 20
+"""
+                }
+            ]
+        },
+        "network": {
+            "name": "Hálózat",
+            "icon": "wifi",
+            "items": [
+                {
+                    "id": "mqtt_basic",
+                    "name": "MQTT Alap",
+                    "description": "MQTT kapcsolat Home Assistant-hoz",
+                    "yaml": """mqtt:
+  broker: !secret mqtt_broker
+  username: !secret mqtt_user
+  password: !secret mqtt_password
+  discovery: true
+  discovery_prefix: homeassistant
+"""
+                },
+                {
+                    "id": "api_basic",
+                    "name": "API Alap",
+                    "description": "Native API kapcsolat Home Assistant-hoz",
+                    "yaml": """api:
+  encryption:
+    key: !secret api_key
+
+# Home Assistant integration
+ota:
+  - platform: esphome
+    password: !secret ota_password
+"""
+                }
+            ]
+        },
+        "switch": {
+            "name": "Kapcsolók",
+            "icon": "toggle_on",
+            "items": [
+                {
+                    "id": "gpio_switch",
+                    "name": "GPIO Kapcsoló",
+                    "description": "Egyszerű GPIO kapcsoló",
+                    "yaml": """switch:
+  - platform: gpio
+    pin: GPIOXX
+    name: "${device_name} Kapcsoló"
+    id: "${device_name}_switch"
+    icon: "mdi:power"
+"""
+                },
+                {
+                    "id": "relay_switch",
+                    "name": "Relé Kapcsoló",
+                    "description": "Relé vezérlés",
+                    "yaml": """switch:
+  - platform: gpio
+    pin: GPIOXX
+    name: "${device_name} Relé"
+    id: "${device_name}_relay"
+    icon: "mdi:power-socket-eu"
+    on_turn_on:
+      - logger.log: "Relé BEKAPCSOLVA"
+    on_turn_off:
+      - logger.log: "Relé KIKAPCSOLVA"
+"""
+                }
+            ]
+        }
+    }
+    
+    return {"success": True, "templates": templates}
 
 
 @app.get("/api/secrets/keys")

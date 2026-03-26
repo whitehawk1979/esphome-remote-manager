@@ -8,7 +8,7 @@ services:
     restart: unless-stopped
     ports:
       - "6052:6052"   # Dashboard Web UI
-      - "7123:6053"   # API port (mapped to internal 6053)
+      # API port not needed - Dashboard handles everything
     volumes:
       - esphome_config:/config
       - /etc/localtime:/etc/localtime:ro
@@ -24,6 +24,7 @@ services:
 
   # ESPHome Remote Manager - Web UI for remote management
   esphome-remote-manager:
+    build: .
     image: whitehawk1979/esphome-remote-manager:latest
     container_name: esphome-remote-manager
     restart: unless-stopped
@@ -32,8 +33,8 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
-      # ESPHome API Configuration
-      - ESPHOME_API_URL=http://esphome:6053
+      # ESPHome API Configuration (both use Dashboard URL - ESPHome Dashboard includes API)
+      - ESPHOME_API_URL=http://esphome:6052
       - ESPHOME_DASHBOARD_URL=http://esphome:6052
       
       # MQTT Configuration (for Home Assistant discovery)
@@ -44,7 +45,7 @@ services:
       
       # Home Assistant Configuration
       - HA_URL=${HA_URL:-http://192.168.1.43:8123}
-      - HA_MCP_URL=${HA_MCP_URL:-}
+      - HA_MCP_URL=${HA_MCP_URL:-http://192.168.1.43:9583/private_nr_13FoRaKqLSc5RTG_L3w}
       
       # MQTT Discovery
       - ENABLE_MQTT_DISCOVERY=${ENABLE_MQTT_DISCOVERY:-true}
