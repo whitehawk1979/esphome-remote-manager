@@ -1,4 +1,4 @@
-/* Chip Visualization Styles */
+/* Chip Visualization Styles - Realistic IC Chip Layout v3.0 */
 
 .chip-visualization {
     display: flex;
@@ -7,191 +7,777 @@
     padding: 16px;
 }
 
-/* DIP Chip Container */
+/* DIP Chip Container - Realistic IC Package */
 .dip-chip-container {
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 20px;
-    background: var(--bg);
-    border-radius: 12px;
+    padding: 24px;
+    background: 
+        /* PCB texture */
+        radial-gradient(circle at 20% 30%, rgba(76, 175, 80, 0.05) 0%, transparent 40%),
+        radial-gradient(circle at 80% 70%, rgba(3, 169, 244, 0.05) 0%, transparent 40%),
+        linear-gradient(135deg, #1a472a 0%, #0d2818 50%, #1a472a 100%);
+    border-radius: 16px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    box-shadow: 
+        inset 0 2px 10px rgba(0, 0, 0, 0.5),
+        0 4px 20px rgba(0, 0, 0, 0.3);
+    border: 2px solid #2d5a3d;
 }
 
+/* PCB traces pattern */
+.dip-chip-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+        repeating-linear-gradient(0deg, transparent 0px, transparent 6px, rgba(255, 215, 0, 0.03) 6px, rgba(255, 215, 0, 0.03) 7px),
+        repeating-linear-gradient(90deg, transparent 0px, transparent 6px, rgba(255, 215, 0, 0.03) 6px, rgba(255, 215, 0, 0.03) 7px);
+    pointer-events: none;
+    border-radius: 14px;
+}
+
+/* Realistic IC Chip - DIP Package */
 .dip-chip {
     display: flex;
     flex-direction: column;
-    background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%);
+    background: 
+        /* Gradient for 3D effect */
+        linear-gradient(145deg, #4a4a4a 0%, #3a3a3a 15%, #2a2a2a 40%, #1a1a1a 70%, #0d0d0d 100%);
     border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    box-shadow: 
+        0 10px 40px rgba(0, 0, 0, 0.6),
+        0 4px 16px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15),
+        inset 0 -2px 0 rgba(0, 0, 0, 0.8),
+        0 0 0 2px rgba(0, 0, 0, 0.9);
     position: relative;
-    min-width: 300px;
+    min-width: 280px;
+    max-width: 100%;
+    border: 1px solid #333;
 }
 
+/* IC surface texture - matte finish */
+.dip-chip::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+        /* Fine grid texture */
+        repeating-linear-gradient(0deg, transparent 0px, transparent 1px, rgba(255, 255, 255, 0.02) 1px, rgba(255, 255, 255, 0.02) 2px),
+        repeating-linear-gradient(90deg, transparent 0px, transparent 1px, rgba(255, 255, 255, 0.015) 1px, rgba(255, 255, 255, 0.015) 2px);
+    pointer-events: none;
+    border-radius: 8px;
+    z-index: 1;
+}
+
+/* Pin 1 notch - orientation marker (semicircle) */
+.dip-chip::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: -4px;
+    transform: translateY(-50%);
+    width: 8px;
+    height: 16px;
+    background: 
+        radial-gradient(ellipse at 100% 50%, #3a3a3a 0%, #2a2a2a 50%, #1a1a1a 100%);
+    border-radius: 0 8px 8px 0;
+    box-shadow: 
+        inset -1px 0 2px rgba(0, 0, 0, 0.8),
+        inset 1px 0 2px rgba(255, 255, 255, 0.1);
+    z-index: 10;
+}
+
+/* Chip header - manufacturer marking area */
 .dip-chip-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 8px 12px;
-    background: var(--primary);
-    border-radius: 8px 8px 0 0;
+    padding: 12px 16px;
+    background: 
+        linear-gradient(135deg, 
+            rgba(3, 169, 244, 0.95) 0%, 
+            rgba(21, 101, 192, 0.98) 50%,
+            rgba(13, 71, 161, 1) 100%);
+    border-radius: 6px 6px 0 0;
+    position: relative;
+    z-index: 2;
+    box-shadow: 
+        0 2px 8px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.3);
 }
 
 .dip-chip-header h3 {
     margin: 0;
     font-size: 14px;
     color: white;
+    font-weight: 700;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+    letter-spacing: 0.5px;
 }
 
 .dip-chip-header .chip-badge {
     background: rgba(255, 255, 255, 0.2);
-    padding: 2px 8px;
-    border-radius: 4px;
+    padding: 4px 12px;
+    border-radius: 12px;
     font-size: 11px;
+    backdrop-filter: blur(8px);
+    font-weight: 600;
+    border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
+/* Pin columns container - Side by Side like real IC */
 .dip-chip-pins {
     display: flex;
+    flex-direction: row;
     gap: 0;
+    position: relative;
+    z-index: 2;
 }
 
-.dip-chip-left, .dip-chip-right {
+/* Left pin column - Pins 1 to N/2 */
+.dip-chip-left {
     display: flex;
     flex-direction: column;
     gap: 1px;
+    padding: 8px 4px 8px 12px;
+    background: linear-gradient(90deg, rgba(0, 0, 0, 0.3) 0%, transparent 100%);
+}
+
+/* Right pin column - Pins N/2+1 to N (bottom to top) */
+.dip-chip-right {
+    display: flex;
+    flex-direction: column-reverse; /* Important: reverse order for IC layout */
+    gap: 1px;
+    padding: 8px 12px 8px 4px;
+    background: linear-gradient(-90deg, rgba(0, 0, 0, 0.3) 0%, transparent 100%);
+}
+
+/* Center chip body */
+.dip-chip-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 16px 24px;
+    min-width: 80px;
+    background: 
+        radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.05) 0%, transparent 50%),
+        linear-gradient(135deg, #282828 0%, #1a1a1a 100%);
+    position: relative;
+}
+
+/* IC die mark - small square in center */
+.dip-chip-center::before {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    background: 
+        linear-gradient(135deg, #3a3a3a 0%, #2a2a2a 50%, #1a1a1a 100%);
+    border: 1px solid #333;
+    border-radius: 2px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.dip-chip-center .chip-icon {
+    font-size: 36px;
+    color: var(--primary);
+    margin-bottom: 8px;
+    text-shadow: 
+        0 2px 4px rgba(0, 0, 0, 0.6),
+        0 0 20px rgba(3, 169, 244, 0.4);
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+}
+
+.dip-chip-center .chip-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: #c8c8c8;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.dip-chip-center .chip-stats {
+    font-size: 10px;
+    color: #666;
+    margin-top: 6px;
+    text-align: center;
+}
+
+/* Pin row styling - Compact */
+.pin-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    min-height: 32px;
+    position: relative;
+    border: 1px solid transparent;
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.pin-row:hover {
+    background: rgba(74, 144, 217, 0.2);
+    transform: translateX(2px);
+    border-color: rgba(74, 144, 217, 0.3);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.pin-row.right:hover {
+    transform: translateX(-2px);
+}
+
+.pin-row.drag-over {
+    background: rgba(76, 175, 80, 0.3);
+    border: 2px dashed var(--success);
+    box-shadow: 0 0 12px rgba(76, 175, 80, 0.5);
+}
+
+.pin-row.used {
+    background: rgba(76, 175, 80, 0.15);
+    border-left: 3px solid var(--success);
+}
+
+.pin-row.conflict {
+    background: rgba(244, 67, 54, 0.2);
+    border-left: 3px solid var(--error);
+}
+
+/* Pin number - IC package style */
+.pin-num {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 26px;
+    height: 26px;
+    background: linear-gradient(135deg, #555 0%, #444 50%, #333 100%);
+    color: #ccc;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 4px;
+    box-shadow: 
+        inset 0 1px 0 rgba(255, 255, 255, 0.15),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.3),
+        0 1px 3px rgba(0, 0, 0, 0.4);
+    font-family: 'Roboto Mono', monospace;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5);
+}
+
+.pin-row.used .pin-num {
+    background: linear-gradient(135deg, #66bb6a 0%, #4caf50 50%, #388e3c 100%);
+    color: white;
+    box-shadow: 
+        inset 0 1px 0 rgba(255, 255, 255, 0.2),
+        0 2px 8px rgba(76, 175, 80, 0.4);
+}
+
+.pin-row.conflict .pin-num {
+    background: linear-gradient(135deg, #ef5350 0%, #f44336 50%, #c62828 100%);
+    color: white;
+    box-shadow: 
+        inset 0 1px 0 rgba(255, 255, 255, 0.2),
+        0 2px 8px rgba(244, 67, 54, 0.4);
+}
+
+/* Pin info container */
+.pin-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+
+.pin-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #d8d8d8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pin-function {
+    font-size: 9px;
+    color: #888;
+    font-family: 'Roboto Mono', monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pin-peripheral {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 6px;
+    background: linear-gradient(135deg, rgba(3, 169, 244, 0.3) 0%, rgba(3, 169, 244, 0.1) 100%);
+    color: var(--primary);
+    border-radius: 4px;
+    font-size: 9px;
+    font-weight: 600;
+    margin-top: 2px;
+    border: 1px solid rgba(3, 169, 244, 0.3);
+}
+
+/* Pin Type Badges - Compact */
+.pin-type {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 8px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+}
+
+.pin-type.input { background: linear-gradient(135deg, #ffa726 0%, #fb8c00 100%); color: white; }
+.pin-type.output { background: linear-gradient(135deg, #66bb6a 0%, #43a047 100%); color: white; }
+.pin-type.i2c { background: linear-gradient(135deg, #ab47bc 0%, #8e24aa 100%); color: white; }
+.pin-type.spi { background: linear-gradient(135deg, #42a5f5 0%, #1e88e5 100%); color: white; }
+.pin-type.uart { background: linear-gradient(135deg, #26c6da 0%, #00acc1 100%); color: white; }
+.pin-type.adc { background: linear-gradient(135deg, #ff7043 0%, #f4511e 100%); color: white; }
+.pin-type.pwm { background: linear-gradient(135deg, #ec407a 0%, #d81b60 100%); color: white; }
+.pin-type.touch { background: linear-gradient(135deg, #7e57c2 0%, #5e35b1 100%); color: white; }
+.pin-type.dac { background: linear-gradient(135deg, #8d6e63 0%, #5d4037 100%); color: white; }
+.pin-type.ground { background: linear-gradient(135deg, #616161 0%, #424242 100%); color: white; }
+.pin-type.power { background: linear-gradient(135deg, #ef5350 0%, #c62828 100%); color: white; }
+
+/* iPhone/iPad optimization */
+@media (max-width: 768px), (hover: none) and (pointer: coarse) {
+    .chip-visualization {
+        padding: 12px;
+    }
+    
+    .dip-chip-container {
+        padding: 16px;
+    }
+    
+    .dip-chip {
+        min-width: 100%;
+    }
+    
+    .dip-chip-header {
+        padding: 10px 12px;
+    }
+    
+    .dip-chip-header h3 {
+        font-size: 12px;
+    }
+    
+    .dip-chip-center {
+        padding: 12px 16px;
+        min-width: 60px;
+    }
+    
+    .dip-chip-center .chip-icon {
+        font-size: 28px;
+    }
+    
+    .dip-chip-center .chip-name {
+        font-size: 11px;
+    }
+    
+    .pin-row {
+        padding: 5px 6px;
+        min-height: 28px;
+    }
+    
+    .pin-num {
+        min-width: 22px;
+        height: 22px;
+        font-size: 10px;
+    }
+    
+    .pin-label {
+        font-size: 10px;
+    }
+    
+    .pin-function {
+        font-size: 8px;
+    }
+}
+
+/* Peripheral Connection Line */
+.connection-line {
+    position: absolute;
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* Peripheral Box */
+.peripheral-box {
+    background: linear-gradient(135deg, rgba(3, 169, 244, 0.1) 0%, rgba(3, 169, 244, 0.05) 100%);
+    border: 1px solid rgba(3, 169, 244, 0.3);
+    border-radius: 8px;
+    padding: 12px;
+    margin: 8px 0;
+    position: relative;
+}
+
+.peripheral-box::before {
+    content: '';
+    position: absolute;
+    left: -8px;
+    top: 50%;
+    width: 8px;
+    height: 2px;
+    background: var(--primary);
+}
+
+.peripheral-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--primary);
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.peripheral-name .material-icons {
+    font-size: 16px;
+}
+
+.peripheral-pins {
+    font-size: 11px;
+    color: #888;
+    font-family: 'Roboto Mono', monospace;
+}
+
+/* Spider Visualization Container */
+.spider-viz-container {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border-radius: 16px;
+    padding: 20px;
+    margin: 16px 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Spider Chip */
+.spider-chip {
+    background: linear-gradient(145deg, #2d2d2d 0%, #1a1a1a 50%, #0d0d0d 100%);
+    border: 1px solid #3a3a3a;
+    border-radius: 16px;
+    padding: 24px;
+    position: relative;
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* Pin 1 marker */
+.spider-chip::before {
+    content: '';
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    width: 16px;
+    height: 16px;
+    background: radial-gradient(circle at 30% 30%, #666 0%, #333 100%);
+    border-radius: 50%;
+    box-shadow: 
+        inset 0 -2px 4px rgba(0, 0, 0, 0.8),
+        0 1px 2px rgba(255, 255, 255, 0.1);
+    z-index: 10;
+}
+
+/* Spider Header */
+.spider-header {
+    text-align: center;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    position: relative;
+    z-index: 1;
+}
+
+.spider-header h3 {
+    margin: 0;
+    color: #e0e0e0;
+    font-size: 18px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+.chip-badge {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: white;
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.board-notes {
+    font-size: 11px;
+    color: #888;
+    margin-top: 8px;
+}
+
+/* Board Layout - Realistic PCB */
+.board-preview {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16px;
+    background: 
+        /* Grid pattern */
+        repeating-linear-gradient(
+            0deg,
+            rgba(255, 255, 255, 0.02) 0px,
+            rgba(255, 255, 255, 0.02) 1px,
+            transparent 1px,
+            transparent 8px
+        ),
+        repeating-linear-gradient(
+            90deg,
+            rgba(255, 255, 255, 0.02) 0px,
+            rgba(255, 255, 255, 0.02) 1px,
+            transparent 1px,
+            transparent 8px
+        ),
+        /* PCB texture */
+        radial-gradient(circle at 20% 20%, rgba(76, 175, 80, 0.05) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(3, 169, 244, 0.05) 0%, transparent 50%),
+        /* Base color */
+        linear-gradient(135deg, #1a472a 0%, #0d2818 50%, #1a472a 100%);
+    border-radius: 12px;
+    position: relative;
+    min-width: 300px;
+    box-shadow: 
+        0 4px 16px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    border: 2px solid #2d5a3d;
+}
+
+/* PCB tracks */
+.board-preview::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+        /* Horizontal tracks */
+        repeating-linear-gradient(
+            0deg,
+            transparent 0px,
+            transparent 6px,
+            rgba(255, 215, 0, 0.03) 6px,
+            rgba(255, 215, 0, 0.03) 7px
+        ),
+        /* Vertical tracks */
+        repeating-linear-gradient(
+            90deg,
+            transparent 0px,
+            transparent 6px,
+            rgba(255, 215, 0, 0.03) 6px,
+            rgba(255, 215, 0, 0.03) 7px
+        );
+    pointer-events: none;
+    border-radius: 10px;
+}
+
+/* Solder points */
+.board-preview::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: 
+        /* Solder pads */
+        radial-gradient(circle at 10% 20%, rgba(255, 215, 0, 0.08) 0%, transparent 3%),
+        radial-gradient(circle at 90% 20%, rgba(255, 215, 0, 0.08) 0%, transparent 3%),
+        radial-gradient(circle at 10% 80%, rgba(255, 215, 0, 0.08) 0%, transparent 3%),
+        radial-gradient(circle at 90% 80%, rgba(255, 215, 0, 0.08) 0%, transparent 3%);
+    pointer-events: none;
+    border-radius: 10px;
+}
+
+.board-chip-badge {
+    background: linear-gradient(135deg, var(--primary), #6b46c1);
+    color: white;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.board-stats {
+    display: flex;
+    gap: 16px;
+    margin-top: 12px;
+}
+
+.stat-item {
+    text-align: center;
+}
+
+.stat-value {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--primary);
+}
+
+.stat-label {
+    font-size: 11px;
+    color: #888;
+}
+
+/* Pin Layout */
+.board-left, .board-right {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
     padding: 8px 4px;
 }
 
-.dip-chip-center {
+.board-center {
     flex: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 16px;
-    min-width: 120px;
-    background: repeating-linear-gradient(
-        45deg,
-        transparent,
-        transparent 10px,
-        rgba(255, 255, 255, 0.02) 10px,
-        rgba(255, 255, 255, 0.02) 20px
-    );
+    padding: 20px;
+    position: relative;
 }
 
-.dip-chip-center .chip-icon {
-    font-size: 48px;
+.board-center .chip-icon {
+    font-size: 56px;
     color: var(--primary);
-    margin-bottom: 8px;
+    margin-bottom: 12px;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4));
 }
 
-.dip-chip-center .chip-name {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--text-primary);
+.board-center .chip-name {
+    font-size: 18px;
+    font-weight: 700;
+    color: #e0e0e0;
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
 
-.dip-chip-center .chip-stats {
-    font-size: 11px;
-    color: var(--text-secondary);
-    margin-top: 4px;
+/* Pinout Legend */
+.pinout-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* Pin Row */
-.pin-row {
+.legend-item {
     display: flex;
     align-items: center;
     gap: 4px;
-    padding: 4px 8px;
-    border-radius: 4px;
+    font-size: 11px;
+    color: #888;
+}
+
+.legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+}
+
+.legend-dot.used { background: var(--success); }
+.legend-dot.free { background: var(--text-secondary); }
+.legend-dot.conflict { background: var(--error); }
+
+/* Peripheral Library Panel */
+.peripheral-library {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.peripheral-library-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.peripheral-library-header h4 {
+    margin: 0;
+    color: #e0e0e0;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.peripheral-search {
+    flex: 1;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    color: #e0e0e0;
+    font-size: 13px;
+    min-width: 0;
+}
+
+.peripheral-search::placeholder {
+    color: #888;
+}
+
+.peripheral-categories {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.category-btn {
+    padding: 6px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    color: #888;
+    font-size: 11px;
     cursor: pointer;
     transition: all 0.2s;
 }
 
-.pin-row:hover {
-    background: rgba(3, 169, 244, 0.1);
-}
-
-.pin-row.used {
-    background: rgba(3, 169, 244, 0.15);
-}
-
-.pin-row.input-only {
-    opacity: 0.7;
-}
-
-.pin-number {
-    font-size: 10px;
-    font-weight: 600;
-    min-width: 20px;
-    text-align: center;
-}
-
-.pin-label {
-    font-size: 10px;
-    color: var(--text-secondary);
-    min-width: 40px;
-}
-
-.pin-function {
-    font-size: 9px;
-    padding: 1px 4px;
-    border-radius: 3px;
-    background: var(--bg);
-}
-
-.pin-indicator {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    margin-left: auto;
-}
-
-/* Pin Colors by Type */
-.pin-gpio { background: var(--primary); }
-.pin-i2c { background: #4caf50; }
-.pin-spi { background: #9c27b0; }
-.pin-uart { background: #2196f3; }
-.pin-adc { background: #ff9800; }
-.pin-dac { background: #e91e63; }
-.pin-touch { background: #00bcd4; }
-.pin-pwm { background: #ff5722; }
-
-/* Pin Usage Labels */
-.pin-usage {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 10px;
-    font-weight: 500;
-}
-
-.pin-usage.gpio { background: rgba(3, 169, 244, 0.2); color: var(--primary); }
-.pin-usage.i2c { background: rgba(76, 175, 80, 0.2); color: #4caf50; }
-.pin-usage.spi { background: rgba(156, 39, 176, 0.2); color: #9c27b0; }
-.pin-usage.uart { background: rgba(33, 150, 243, 0.2); color: #2196f3; }
-
-/* Peripheral Section */
-.peripheral-section {
-    background: var(--card-bg);
-    border-radius: 8px;
-    padding: 12px;
-    margin-top: 16px;
-}
-
-.peripheral-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-}
-
-.peripheral-header h4 {
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+.category-btn:hover,
+.category-btn.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
 }
 
 .peripheral-grid {
@@ -200,202 +786,292 @@
     gap: 12px;
 }
 
-/* Peripheral Card */
-.peripheral-card {
-    background: var(--bg);
+.peripheral-item {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 8px;
     padding: 12px;
-    border: 1px solid var(--border);
+    cursor: pointer;
     transition: all 0.2s;
 }
 
-.peripheral-card:hover {
-    border-color: var(--primary);
-    box-shadow: 0 2px 8px rgba(3, 169, 244, 0.1);
+.peripheral-item:hover {
+    background: rgba(3, 169, 244, 0.1);
+    border-color: rgba(3, 169, 244, 0.3);
+    transform: translateY(-2px);
 }
 
-.peripheral-card-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 8px;
+.peripheral-item.dragging {
+    opacity: 0.5;
+    transform: scale(0.95);
 }
-
-.peripheral-icon {
-    width: 32px;
-    height: 32px;
-    border-radius: 6px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-}
-
-.peripheral-icon.sensor { background: rgba(76, 175, 80, 0.2); color: #4caf50; }
-.peripheral-icon.actuator { background: rgba(255, 152, 0, 0.2); color: #ff9800; }
-.peripheral-icon.display { background: rgba(33, 150, 243, 0.2); color: #2196f3; }
-.peripheral-icon.input { background: rgba(156, 39, 176, 0.2); color: #9c27b0; }
-.peripheral-icon.communication { background: rgba(0, 188, 212, 0.2); color: #00bcd4; }
-.peripheral-icon.power { background: rgba(233, 30, 99, 0.2); color: #e91e63; }
 
 .peripheral-name {
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 500;
+    color: #e0e0e0;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .peripheral-type {
     font-size: 10px;
-    color: var(--text-secondary);
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
-.peripheral-pins {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    margin-top: 8px;
-}
-
-.peripheral-pin {
-    display: flex;
-    align-items: center;
-    gap: 2px;
-    padding: 2px 6px;
-    border-radius: 4px;
+.peripheral-pins-count {
     font-size: 10px;
-    background: var(--bg-secondary);
-}
-
-.peripheral-pin i2c { border-left: 3px solid #4caf50; }
-.peripheral-pin spi { border-left: 3px solid #9c27b0; }
-.peripheral-pin uart { border-left: 3px solid #2196f3; }
-.peripheral-pin gpio { border-left: 3px solid var(--primary); }
-
-/* Connection Diagram */
-.connection-diagram {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    padding: 16px;
-    background: var(--bg);
-    border-radius: 8px;
-}
-
-.connection-row {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-}
-
-.connection-node {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 12px;
-    background: var(--card-bg);
-    border-radius: 8px;
-    min-width: 80px;
-}
-
-.connection-node.chip {
-    background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%);
-    color: white;
-}
-
-.connection-node.peripheral {
-    border: 2px solid var(--primary);
-}
-
-.connection-line {
-    flex: 1;
-    height: 2px;
-    background: var(--border);
-    position: relative;
-}
-
-.connection-line::before {
-    content: attr(data-pins);
-    position: absolute;
-    top: -12px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 10px;
-    color: var(--text-secondary);
-    background: var(--bg);
-    padding: 2px 8px;
-    border-radius: 4px;
-}
-
-/* Legend */
-.chip-legend {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    padding: 12px;
-    background: var(--bg);
-    border-radius: 8px;
-    margin-top: 12px;
-}
-
-.legend-item {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 11px;
-}
-
-.legend-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-}
-
-/* Statistics */
-.chip-statistics {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 12px;
-    margin-top: 16px;
-}
-
-.stat-card {
-    background: var(--card-bg);
-    border-radius: 8px;
-    padding: 12px;
-    text-align: center;
-}
-
-.stat-value {
-    font-size: 24px;
-    font-weight: 600;
     color: var(--primary);
-}
-
-.stat-label {
-    font-size: 11px;
-    color: var(--text-secondary);
     margin-top: 4px;
 }
 
-/* Responsive */
+/* Mobile Responsive */
 @media (max-width: 768px) {
-    .dip-chip {
-        min-width: 100%;
+    .chip-visualization { padding: 12px; }
+    .dip-chip-container { padding: 12px; }
+    .dip-chip { min-width: 280px; }
+    .dip-chip-center { min-width: 100px; padding: 16px; }
+    .dip-chip-center .chip-icon { font-size: 40px; }
+    .dip-chip-center .chip-name { font-size: 14px; }
+    .spider-viz-container { padding: 12px; }
+    .spider-chip { padding: 16px; }
+    .board-preview { min-width: 240px; }
+    .peripheral-grid { grid-template-columns: 1fr; }
+    
+    /* Touch-friendly pins */
+    .pin-row { min-height: 48px; padding: 8px 12px; }
+    .pin-num { min-width: 36px; height: 36px; font-size: 13px; }
+    .pin-label { font-size: 13px; }
+    .pin-function { font-size: 11px; }
+}
+
+@media (max-width: 480px) {
+    .dip-chip-center .chip-icon { font-size: 32px; }
+    .dip-chip-center .chip-name { font-size: 12px; }
+    .pin-row { padding: 6px 8px; min-height: 44px; }
+    .pin-num { min-width: 32px; height: 32px; font-size: 11px; }
+}
+
+/* iOS Safari fixes */
+@supports (-webkit-touch-callout: none) {
+    .dip-chip-container,
+    .spider-viz-container {
+        -webkit-overflow-scrolling: touch;
+        overflow-x: auto;
     }
     
-    .dip-chip-pins {
+    .pin-row {
+        -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
+    }
+}
+
+/* ========================================= */
+/* Spider Layout - 5-Column Grid v5.0         */
+/* ========================================= */
+/* Helyes elrendezés:
+ * [Bal Perif] [Bal Pin] | [Chip Box] | [Jobb Pin] [Jobb Perif]
+ *    200px      140px       200px       140px       200px
+ */
+
+.spider-layout {
+    display: grid;
+    grid-template-columns: 200px 140px 200px 140px 200px;
+    gap: 16px;
+    align-items: start;
+    margin-top: 20px;
+}
+
+/* Bal perifériák - 1. oszlop */
+.peripherals-panel.left {
+    grid-column: 1;
+    text-align: right;
+}
+
+/* Bal pinek - 2. oszlop */
+.pins-column.left {
+    grid-column: 2;
+    text-align: right;
+    border-right: 3px solid var(--primary, #4a90d9);
+}
+
+/* Chip box - 3. oszlop (KÖZÉPEN) */
+.chip-box {
+    grid-column: 3;
+    background: linear-gradient(135deg, #2a2a4e 0%, #1a1a2e 100%);
+    border: 3px solid var(--primary, #4a90d9);
+    border-radius: 16px;
+    padding: 24px 20px;
+    text-align: center;
+    box-shadow: 0 0 30px rgba(74, 144, 217, 0.2);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 200px;
+}
+
+/* Jobb pinek - 4. oszlop */
+.pins-column.right {
+    grid-column: 4;
+    text-align: left;
+    border-left: 3px solid var(--primary, #4a90d9);
+}
+
+/* Jobb perifériák - 5. oszlop */
+.peripherals-panel.right {
+    grid-column: 5;
+    text-align: left;
+}
+
+/* Pinek oszlopok - közös stílus */
+.pins-column {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 100px;
+    max-width: 140px;
+    padding: 12px;
+    background: linear-gradient(180deg, var(--bg-secondary, #1a1a2e) 0%, var(--bg, #16213e) 100%);
+    border-radius: 12px;
+}
+
+/* Perifériák panelek - közös stílus */
+.peripherals-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 600px;
+    overflow-y: auto;
+    padding: 16px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 12px;
+}
+
+/* Stats row - a spider-chip-en belül, a layout után */
+.stats-row {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border, #333);
+    margin-top: 16px;
+}
+
+/* Chip center panel - már nem használt, de megtartjuk kompatibilitásért */
+.chip-center-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+/* Responsive adjustments - 5-column grid */
+@media (max-width: 1400px) {
+    .spider-layout {
+        grid-template-columns: 180px 120px 180px 120px 180px;
+        gap: 12px;
+    }
+    
+    .pins-column {
+        max-width: 120px;
+    }
+    
+    .peripherals-panel {
+        max-height: 500px;
+    }
+}
+
+@media (max-width: 1200px) {
+    .spider-layout {
+        grid-template-columns: 160px 110px 160px 110px 160px;
+        gap: 10px;
+    }
+    
+    .pins-column {
+        max-width: 110px;
+        padding: 8px;
+    }
+    
+    .peripherals-panel {
+        max-height: 400px;
+        padding: 12px;
+    }
+    
+    .chip-box {
+        padding: 16px 12px;
+    }
+}
+
+@media (max-width: 900px) {
+    /* Tablet: 2-row layout */
+    .spider-layout {
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: auto auto;
+        gap: 16px;
+    }
+    
+    /* First row: Left Periph + Left Pins + Chip + Right Pins + Right Periph */
+    .peripherals-panel.left {
+        grid-column: 1;
+        grid-row: 2;
+    }
+    
+    .pins-column.left {
+        grid-column: 1;
+        grid-row: 1;
+    }
+    
+    .chip-box {
+        grid-column: 1 / -1;
+        grid-row: 1;
+    }
+    
+    .pins-column.right {
+        grid-column: 2;
+        grid-row: 1;
+    }
+    
+    .peripherals-panel.right {
+        grid-column: 2;
+        grid-row: 2;
+    }
+}
+
+@media (max-width: 600px) {
+    /* Mobile: vertical stack */
+    .spider-layout {
+        display: flex;
         flex-direction: column;
+        gap: 16px;
     }
     
-    .dip-chip-left, .dip-chip-right {
-        flex-direction: row;
-        flex-wrap: wrap;
+    .peripherals-panel.left,
+    .peripherals-panel.right,
+    .pins-column.left,
+    .pins-column.right,
+    .chip-box {
+        grid-column: auto;
+        width: 100%;
+        max-width: 100%;
     }
     
-    .peripheral-grid {
-        grid-template-columns: 1fr;
+    .pins-column {
+        min-width: 80px;
+        max-width: 100%;
+        padding: 8px;
     }
     
-    .chip-statistics {
-        grid-template-columns: repeat(2, 1fr);
+    .peripherals-panel {
+        padding: 12px;
+        max-height: 300px;
+    }
+    
+    .chip-box {
+        padding: 16px 12px;
     }
 }

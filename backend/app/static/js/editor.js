@@ -14,7 +14,7 @@ function initMonacoEditor() {
         return;
     }
     
-    require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' } });
+    require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.50.0/min/vs' } });
     
     require(['vs/editor/editor.main'], function () {
         try {
@@ -176,16 +176,11 @@ function initMonacoEditor() {
                 showFunctions: true,
                 showVariables: true,
                 showConstants: true
-            },
-            quickSuggestions: {
-                other: true,
-                comments: false,
-                strings: true
-            },
-            parameterHints: { enabled: true },
-            hover: { enabled: true, delay: 300 },
-            lightbulb: { enabled: true }
+            }
         });
+        
+        // Store editor globally for access from other functions
+        window.monacoEditor = editor;
         
         // Add keyboard shortcuts
         editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, function() {
@@ -271,7 +266,7 @@ async function updateChipVisualization(platform, board) {
     
     try {
         // Fetch board pinout
-        const response = await fetch(`${window.API_BASE}/api/chip/pins/${board}`);
+        const response = await fetch(`${window.API_BASE || window.location.origin}/api/chip/pins/${board}`);
         const data = await response.json();
         
         if (data.success) {
@@ -417,6 +412,10 @@ function renderPinRow(pinNum, usedPins, side) {
 }
 
 // Debounce helper
+let validationTimeout = null;
+let lastYAML = '';
+let isUpdating = false;
+
 function debounce(func, wait) {
     let timeout;
     return function executedFunction(...args) {
@@ -429,62 +428,70 @@ function debounce(func, wait) {
     };
 }
 
-// Validate YAML
+// Validate YAML - optimized to prevent loops
 async function validateYAML() {
-    if (!editor) return;
+    if (!editor || isUpdating) return;
     
     const yamlContent = editor.getValue();
-    const validationStatus = document.getElementById('validation-status');
     
-    try {
-        const response = await fetch(`${window.API_BASE}/api/validate/yaml`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ yaml: yamlContent })
-        });
-        
-        const result = await response.json();
-        
-        if (result.success && result.valid) {
-            validationStatus.innerHTML = `
-                <span class="material-icons" style="color: var(--success);">check_circle</span>
-                <span style="color: var(--success);">YAML érvényes</span>
-            `;
-            
-            // Update pin visualization
-            if (result.used_pins) {
-                updatePinVisualization(result.used_pins);
-            }
-            
-            // Show warnings if any
-            if (result.warnings && result.warnings.length > 0) {
-                showValidationWarnings(result.warnings);
-            }
-        } else {
-            const errorMsg = result.error || result.errors?.join(', ') || 'Unknown error';
-            validationStatus.innerHTML = `
-                <span class="material-icons" style="color: var(--error);">error</span>
-                <span style="color: var(--error);">${errorMsg}</span>
-            `;
-            
-            // Highlight error line if available
-            if (result.line !== undefined) {
-                editor.revealLineInCenter(result.line + 1);
-                editor.setSelection({
-                    startLineNumber: result.line + 1,
-                    startColumn: 1,
-                    endLineNumber: result.line + 1,
-                    endColumn: 1000
-                });
-            }
-        }
-    } catch (error) {
-        console.error('Validation error:', error);
-        validationStatus.innerHTML = `
-            <span class="material-icons" style="color: var(--warning);">warning</span>
-            <span style="color: var(--warning);">Validálás sikertelen</span>
-        `;
+    // Skip if content hasn't changed
+    if (yamlContent === lastYAML) return;
+    lastYAML = yamlContent;
+    
+    const validationStatus = document.getElementById('validation-status');
+    if (!validationStatus) return;
+    
+    // Show validating status
+    validationStatus.innerHTML = `
+        <span class="material-icons" style="color: var(--warning); animation: spin 1s linear infinite;">sync</span>
+        <span style="color: var(--warning);">Validating...</span>
+    `;
+    
+    // Clear any pending validation
+    if (validationTimeout) {
+        clearTimeout(validationTimeout);
     }
+    
+    // Debounce API call - only validate after 1 second of no changes
+    validationTimeout = setTimeout(async () => {
+        try {
+            isUpdating = true;
+            
+            const response = await fetch(`${window.API_BASE || window.location.origin}/api/validate/yaml`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ yaml: yamlContent })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success && result.valid) {
+                validationStatus.innerHTML = `
+                    <span class="material-icons" style="color: var(--success);">check_circle</span>
+                    <span style="color: var(--success);">YAML valid</span>
+                `;
+                
+                // Update pin visualization only if pins changed
+                if (result.used_pins && JSON.stringify(result.used_pins) !== lastYAML) {
+                    updatePinVisualization(result.used_pins);
+                }
+            } else {
+                const errorMsg = result.error || result.errors?.join(', ') || 'Validation failed';
+                validationStatus.innerHTML = `
+                    <span class="material-icons" style="color: var(--error);">error</span>
+                    <span style="color: var(--error);">${errorMsg}</span>
+                `;
+            }
+        } catch (error) {
+            console.error('Validation error:', error);
+            validationStatus.innerHTML = `
+                <span class="material-icons" style="color: var(--warning);">warning</span>
+                <span style="color: var(--warning);">Validation unavailable</span>
+            `;
+        } finally {
+            isUpdating = false;
+        }
+    }, 1000); // 1 second debounce
 }
 
 // Show validation warnings
@@ -506,7 +513,7 @@ function updatePinVisualization(usedPins) {
     if (!pinContainer || !selectedBoard) return;
     
     // Fetch board pinout
-    fetch(`${window.API_BASE}/api/chip/pins/${selectedBoard}`)
+    fetch(`${window.API_BASE || window.location.origin}/api/chip/pins/${selectedBoard}`)
         .then(res => res.json())
         .then(data => {
             if (data.success) {
@@ -684,15 +691,113 @@ function insertTemplate(templateYAML) {
     editor.focus();
 }
 
+// Validate YAML content
+function validateYAML(yamlContent) {
+    const errors = [];
+    const warnings = [];
+    
+    if (!yamlContent || yamlContent.trim() === '') {
+        errors.push({ line: 1, message: 'YAML content is empty', severity: 'error' });
+        return { valid: false, errors, warnings };
+    }
+    
+    // Check for required top-level keys
+    const requiredKeys = ['esphome'];
+    requiredKeys.forEach(function(key) {
+        if (!yamlContent.includes(key + ':')) {
+            errors.push({ line: 1, message: 'Missing required key: ' + key, severity: 'error' });
+        }
+    });
+    
+    // Check for common ESPHome patterns
+    const commonPatterns = [
+        { pattern: /platform:\s*\w+/g, message: 'Platform specified correctly' },
+        { pattern: /pin:\s*(GPIO)?\d+/g, message: 'Pin specified' },
+        { pattern: /name:\s*["']?\w+["']?/g, message: 'Name specified' }
+    ];
+    
+    // Check for YAML syntax errors (basic)
+    const lines = yamlContent.split('\n');
+    let currentIndent = 0;
+    let prevIndent = 0;
+    
+    lines.forEach(function(line, index) {
+        const lineNum = index + 1;
+        const trimmedLine = line.trim();
+        
+        // Skip empty lines and comments
+        if (trimmedLine === '' || trimmedLine.startsWith('#')) {
+            return;
+        }
+        
+        // Check indentation
+        const indent = line.search(/\S/);
+        if (indent % 2 !== 0) {
+            errors.push({ line: lineNum, message: 'Invalid indentation (must be multiple of 2 spaces)', severity: 'error' });
+        }
+        
+        // Check for unquoted strings with special characters
+        if (trimmedLine.includes(':') && !trimmedLine.startsWith('-')) {
+            const colonIndex = trimmedLine.indexOf(':');
+            const value = trimmedLine.substring(colonIndex + 1).trim();
+            if (value && !value.startsWith('"') && !value.startsWith("'") && !value.startsWith('[') && !value.startsWith('{') && !value.startsWith('!') && !value.match(/^\d/) && !value.match(/^(true|false|yes|no|on|off)$/)) {
+                if (value.includes(':') || value.includes('#') || value.includes('{') || value.includes('}')) {
+                    warnings.push({ line: lineNum, message: 'Value may need quotes: ' + value.substring(0, 20), severity: 'warning' });
+                }
+            }
+        }
+    });
+    
+    return {
+        valid: errors.length === 0,
+        errors: errors,
+        warnings: warnings
+    };
+}
+
+// Validate and show errors panel
+function validateAndShowErrors() {
+    const yamlContent = window.monacoEditor ? window.monacoEditor.getValue() : document.getElementById('yaml-content').value;
+    const result = validateYAML(yamlContent);
+    
+    // Update errors panel
+    const errorsPanel = document.getElementById('yaml-errors-panel');
+    if (errorsPanel) {
+        if (result.errors.length === 0 && result.warnings.length === 0) {
+            errorsPanel.innerHTML = '<div class="yaml-valid"><span class="material-icons">check_circle</span> YAML is valid</div>';
+            errorsPanel.className = 'yaml-errors-panel valid';
+        } else {
+            let html = '';
+            result.errors.forEach(function(err) {
+                html += '<div class="yaml-error"><span class="material-icons">error</span> Line ' + err.line + ': ' + err.message + '</div>';
+            });
+            result.warnings.forEach(function(warn) {
+                html += '<div class="yaml-warning"><span class="material-icons">warning</span> Line ' + warn.line + ': ' + warn.message + '</div>';
+            });
+            errorsPanel.innerHTML = html;
+            errorsPanel.className = 'yaml-errors-panel invalid';
+        }
+    }
+    
+    return result;
+}
+
 // Get editor content
 function getEditorContent() {
-    return editor ? editor.getValue() : '';
+    if (window.monacoEditor) {
+        return window.monacoEditor.getValue();
+    }
+    const textarea = document.getElementById('yaml-content');
+    return textarea ? textarea.value : '';
 }
 
 // Set editor content
 function setEditorContent(content) {
-    if (editor) {
-        editor.setValue(content);
+    if (window.monacoEditor) {
+        window.monacoEditor.setValue(content);
+    } else {
+        const textarea = document.getElementById('yaml-content');
+        if (textarea) textarea.value = content;
     }
 }
 
@@ -702,5 +807,6 @@ window.insertTemplate = insertTemplate;
 window.getEditorContent = getEditorContent;
 window.setEditorContent = setEditorContent;
 window.validateYAML = validateYAML;
+window.validateAndShowErrors = validateAndShowErrors;
 window.showPinDetails = showPinDetails;
 window.showFullPinDiagram = showFullPinDiagram;

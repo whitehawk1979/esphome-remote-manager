@@ -3,13 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>ESPHome Remote Manager</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="shortcut icon" href="/static/favicon.svg">
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <!-- Monaco Editor -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
-    <link rel="stylesheet" href="/static/css/chip.css">
-    <link rel="stylesheet" href="/static/css/chip-viz.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/monaco-editor@0.50.0/min/vs/editor/editor.main.css">
+    <!-- Version: 202603271930 -->
+    <link rel="stylesheet" href="/static/css/chip.css?v=202603281210">
+    <link rel="stylesheet" href="/static/css/chip-viz.css?v=202603281210">
     <style>
         :root {
             --primary: #03a9f4;
@@ -34,9 +40,66 @@
             background: var(--bg);
             color: var(--text);
             min-height: 100vh;
+            -webkit-overflow-scrolling: touch;
+            -webkit-tap-highlight-color: transparent;
         }
         
         .container { max-width: 1600px; margin: 0 auto; padding: 20px; }
+        
+        /* Mobile-first responsive breakpoints */
+        @media (max-width: 768px) {
+            .container { padding: 12px; }
+            .header { flex-direction: column; gap: 12px; padding: 12px; }
+            .header h1 { font-size: 18px; }
+            .header-actions { flex-wrap: wrap; justify-content: center; }
+            .device-grid { grid-template-columns: 1fr; }
+            .device-info { grid-template-columns: 1fr; }
+            .card-header { flex-direction: column; gap: 8px; align-items: flex-start; }
+            .card-body { padding: 12px; }
+            .modal-content { width: 95%; max-height: 90vh; margin: 5px; }
+            .yaml-editor-container { grid-template-columns: 1fr !important; }
+            .chip-viz-container { flex-direction: column; }
+            .board-preview { width: 100%; }
+            button, .btn { min-height: 44px; min-width: 44px; }
+        }
+        
+        @media (max-width: 480px) {
+            .container { padding: 8px; }
+            .header h1 { font-size: 16px; }
+            .tab { padding: 8px 12px; font-size: 13px; }
+            .card-header h2 { font-size: 16px; }
+            .device-header h3 { font-size: 16px; }
+            .status-item { flex-direction: column; align-items: flex-start; }
+            .peripheral-grid { grid-template-columns: 1fr; }
+            .compare-yaml { grid-template-columns: 1fr; }
+        }
+        
+        /* Touch-friendly improvements */
+        button, .btn, .tab, .device-card, .peripheral-item {
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        button:active, .btn:active, .tab:active {
+            transform: scale(0.98);
+            opacity: 0.9;
+        }
+        
+        /* iOS Safari fixes */
+        @supports (-webkit-touch-callout: none) {
+            .container { min-height: -webkit-fill-available; }
+            .modal-content { max-height: -webkit-fill-available; }
+            input, textarea, select { font-size: 16px !important; }
+        }
+        
+        /* Safe area for notched devices */
+        @supports (padding: max(0px)) {
+            .container { padding-left: max(20px, env(safe-area-inset-left)); }
+            .container { padding-right: max(20px, env(safe-area-inset-right)); }
+            .container { padding-bottom: max(20px, env(safe-area-inset-bottom)); }
+            .header { padding-top: max(20px, env(safe-area-inset-top)); }
+            .modal-content { padding-bottom: max(20px, env(safe-area-inset-bottom)); }
+        }
         
         /* Header */
         .header {
@@ -805,23 +868,23 @@
                                 <div id="validation-warnings" style="margin-top: 4px;"></div>
                             </div>
                             <div style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
-                                <button class="btn btn-outline" onclick="insertTemplate('sensor')" title="Add sensor">
+                                <button class="btn btn-outline" onclick="insertComponentTemplate('sensor')" title="Add sensor">
                                     <span class="material-icons" style="font-size: 16px;">sensors</span>
                                     Sensor
                                 </button>
-                                <button class="btn btn-outline" onclick="insertTemplate('binary_sensor')" title="Add binary sensor">
+                                <button class="btn btn-outline" onclick="insertComponentTemplate('binary_sensor')" title="Add binary sensor">
                                     <span class="material-icons" style="font-size: 16px;">toggle_on</span>
                                     Binary
                                 </button>
-                                <button class="btn btn-outline" onclick="insertTemplate('switch')" title="Add switch">
+                                <button class="btn btn-outline" onclick="insertComponentTemplate('switch')" title="Add switch">
                                     <span class="material-icons" style="font-size: 16px;">power</span>
                                     Switch
                                 </button>
-                                <button class="btn btn-outline" onclick="insertTemplate('light')" title="Add light">
+                                <button class="btn btn-outline" onclick="insertComponentTemplate('light')" title="Add light">
                                     <span class="material-icons" style="font-size: 16px;">lightbulb</span>
                                     Light
                                 </button>
-                                <button class="btn btn-outline" onclick="insertTemplate('output')" title="Add output">
+                                <button class="btn btn-outline" onclick="insertComponentTemplate('output')" title="Add output">
                                     <span class="material-icons" style="font-size: 16px;">output</span>
                                     Output
                                 </button>
@@ -834,8 +897,13 @@
                             <div id="yaml-device-info" style="margin-bottom: 16px;">
                                 <div style="color: var(--text-secondary); font-size: 13px;">Select a device to see details</div>
                             </div>
-                            <!-- Pin Visualization -->
-                            <div id="pin-visualization" style="margin-bottom: 16px;"></div>
+                            <!-- Chip Visualization Button -->
+                            <div style="margin: 12px 0;">
+                                <button class="btn btn-outline btn-sm" onclick="showChipVizModal()" id="chip-viz-btn" style="display: none; width: 100%; justify-content: center;">
+                                    <span class="material-icons" style="font-size: 16px; margin-right: 6px;">memory</span>
+                                    Show Pin Configuration
+                                </button>
+                            </div>
                             <h4 style="margin-bottom: 12px;">Integrations</h4>
                             <div id="yaml-integrations" style="margin-bottom: 16px;">
                                 <div style="color: var(--text-secondary); font-size: 13px;">-</div>
@@ -844,6 +912,98 @@
                             <div id="yaml-entities" style="display: flex; flex-direction: column; gap: 8px;">
                                 <div style="color: var(--text-secondary); font-size: 13px;">Load a device to see entities</div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Chip Visualization Modal -->
+        <div class="modal-overlay" id="chip-viz-modal">
+            <div class="modal" style="max-width: 1400px; width: 95vw; max-height: 95vh; overflow: hidden; display: flex; flex-direction: column;">
+                <div class="modal-header" style="flex-shrink: 0;">
+                    <h3><span class="material-icons">memory</span> Pin Configuration</h3>
+                    <button class="modal-close" onclick="closeChipVizModal()">
+                        <span class="material-icons">close</span>
+                    </button>
+                </div>
+                <div class="modal-body" style="padding: 0; overflow-y: auto; flex: 1;">
+                    <!-- Device Info -->
+                    <div id="chip-viz-device-info" style="margin: 16px; padding: 16px; background: var(--bg-secondary); border-radius: 8px; display: flex; gap: 24px; align-items: center; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 150px;">
+                            <div style="font-size: 12px; color: var(--text-secondary); text-transform: uppercase;">Device</div>
+                            <div id="chip-viz-device-name" style="font-size: 20px; font-weight: 600;">-</div>
+                        </div>
+                        <div style="min-width: 120px;">
+                            <div style="font-size: 12px; color: var(--text-secondary); text-transform: uppercase;">Platform</div>
+                            <div id="chip-viz-platform" style="font-size: 16px; font-weight: 500;">-</div>
+                        </div>
+                        <div style="min-width: 150px;">
+                            <div style="font-size: 12px; color: var(--text-secondary); text-transform: uppercase;">Board</div>
+                            <div id="chip-viz-board" style="font-size: 16px; font-weight: 500;">-</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Statistics -->
+                    <div class="chip-statistics" style="display: flex; gap: 12px; margin: 0 16px 16px 16px; flex-wrap: wrap;">
+                        <div class="stat-card" style="flex: 1; min-width: 100px; background: var(--bg); border-radius: 8px; padding: 12px; text-align: center;">
+                            <div id="chip-viz-total-pins" class="stat-value" style="font-size: 28px; font-weight: 600; color: #ff9800;">-</div>
+                            <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase;">Total Pins</div>
+                        </div>
+                        <div class="stat-card" style="flex: 1; min-width: 100px; background: var(--bg); border-radius: 8px; padding: 12px; text-align: center;">
+                            <div id="chip-viz-used-pins" class="stat-value" style="font-size: 28px; font-weight: 600; color: var(--primary);">-</div>
+                            <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase;">Used Pins</div>
+                        </div>
+                        <div class="stat-card" style="flex: 1; min-width: 100px; background: var(--bg); border-radius: 8px; padding: 12px; text-align: center;">
+                            <div id="chip-viz-free-pins" class="stat-value" style="font-size: 28px; font-weight: 600; color: #4caf50;">-</div>
+                            <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase;">Free Pins</div>
+                        </div>
+                        <div class="stat-card" style="flex: 1; min-width: 100px; background: var(--bg); border-radius: 8px; padding: 12px; text-align: center;">
+                            <div id="chip-viz-peripherals" class="stat-value" style="font-size: 28px; font-weight: 600; color: #2196f3;">-</div>
+                            <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase;">Peripherals</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Chip Diagram -->
+                    <div id="chip-viz-diagram" style="background: var(--bg); border-radius: 0; padding: 20px; min-height: 500px;">
+                        <div style="text-align: center; color: var(--text-secondary); padding: 100px;">
+                            <span class="material-icons" style="font-size: 64px;">memory</span>
+                            <div style="font-size: 18px; margin-top: 16px;">Loading chip diagram...</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Legend -->
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;">
+                        <div style="display: flex; align-items: center; gap: 4px;">
+                            <span style="width: 12px; height: 12px; border-radius: 50%; background: var(--primary);"></span>
+                            <span style="font-size: 12px;">GPIO</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 4px;">
+                            <span style="width: 12px; height: 12px; border-radius: 50%; background: #4caf50;"></span>
+                            <span style="font-size: 12px;">I2C</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 4px;">
+                            <span style="width: 12px; height: 12px; border-radius: 50%; background: #9c27b0;"></span>
+                            <span style="font-size: 12px;">SPI</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 4px;">
+                            <span style="width: 12px; height: 12px; border-radius: 50%; background: #2196f3;"></span>
+                            <span style="font-size: 12px;">UART</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 4px;">
+                            <span style="width: 12px; height: 12px; border-radius: 50%; background: #ff9800;"></span>
+                            <span style="font-size: 12px;">ADC</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Peripherals List -->
+                    <div>
+                        <h4 style="margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                            <span class="material-icons">devices</span>
+                            Connected Peripherals
+                        </h4>
+                        <div id="chip-viz-peripherals-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px;">
+                            <div style="color: var(--text-secondary); text-align: center; padding: 16px;">No peripherals detected</div>
                         </div>
                     </div>
                 </div>
@@ -909,6 +1069,17 @@
                             <select id="new-device-board" style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px;">
                                 <option value="">Select board...</option>
                             </select>
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 4px; font-weight: 500;">Framework</label>
+                            <select id="new-device-framework" style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px;" onchange="updateFrameworkInfo()">
+                                <option value="arduino">Arduino (Recommended)</option>
+                                <option value="esp-idf">ESP-IDF (Advanced)</option>
+                            </select>
+                        </div>
+                        <div style="background: rgba(74, 144, 217, 0.1); padding: 10px; border-radius: 6px; font-size: 12px; color: var(--text-secondary);">
+                            <span class="material-icons" style="font-size: 14px; vertical-align: middle;">info</span>
+                            <span id="framework-info">Arduino: Easier setup, larger community support. Recommended for beginners.</span>
                         </div>
                         <div>
                             <label style="display: flex; align-items: center; gap: 8px;">
@@ -986,6 +1157,48 @@ esp32:
                         <span class="material-icons">upload_file</span>
                         Import
                     </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Compare Modal -->
+        <div class="modal-overlay" id="compare-modal">
+            <div class="modal" style="max-width: 1200px;">
+                <div class="modal-header">
+                    <h3><span class="material-icons">compare</span> Compare Devices</h3>
+                    <button class="modal-close" onclick="closeCompareModal()">
+                        <span class="material-icons">close</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+                        <div style="flex: 1;">
+                            <label style="display: block; margin-bottom: 4px; font-weight: 500;">Device 1:</label>
+                            <select id="compare-device-1" style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px;" onchange="loadCompareYaml(1)">
+                                <option value="">Select device...</option>
+                            </select>
+                        </div>
+                        <div style="flex: 1;">
+                            <label style="display: block; margin-bottom: 4px; font-weight: 500;">Device 2:</label>
+                            <select id="compare-device-2" style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px;" onchange="loadCompareYaml(2)">
+                                <option value="">Select device...</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                        <div style="background: var(--bg); border-radius: 8px; padding: 12px;">
+                            <h4 id="compare-title-1" style="margin-bottom: 8px; color: var(--primary);">Device 1</h4>
+                            <pre id="compare-yaml-1" style="background: var(--card-bg); padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 12px; max-height: 400px; white-space: pre-wrap;"></pre>
+                        </div>
+                        <div style="background: var(--bg); border-radius: 8px; padding: 12px;">
+                            <h4 id="compare-title-2" style="margin-bottom: 8px; color: var(--primary);">Device 2</h4>
+                            <pre id="compare-yaml-2" style="background: var(--card-bg); padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 12px; max-height: 400px; white-space: pre-wrap;"></pre>
+                        </div>
+                    </div>
+                    <div id="compare-diff" style="margin-top: 16px; padding: 12px; background: var(--card-bg); border-radius: 8px;">
+                        <h4 style="margin-bottom: 8px;"><span class="material-icons" style="font-size: 16px; vertical-align: middle;">difference</span> Differences</h4>
+                        <div id="compare-diff-content" style="font-size: 12px; color: var(--text-secondary);">Select two devices to compare</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1254,6 +1467,86 @@ ota_password: myotapassword"></textarea>
                             <span id="system-status" class="status-indicator">
                                 <span class="material-icons">sync</span> Checking system status...
                             </span>
+                        </div>
+                    </div>
+
+                    <!-- ESPHome Access Info -->
+                    <div class="settings-section" id="section-esphome-access">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <h3 style="margin: 0;"><span class="material-icons">login</span> ESPHome Access</h3>
+                            <span style="color: var(--text-secondary); font-size: 12px;">From secrets.yaml</span>
+                        </div>
+                        <div class="settings-grid">
+                            <div class="settings-item">
+                                <label>ESPHome Dashboard URL</label>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span id="setting-esphome-url" class="settings-value" style="font-family: monospace;">http://192.168.1.64:6052</span>
+                                    <button class="btn btn-outline btn-sm" onclick="copyToClipboard('setting-esphome-url')" title="Copy URL" style="padding: 2px 6px;">
+                                        <span class="material-icons" style="font-size: 14px;">content_copy</span>
+                                    </button>
+                                    <button class="btn btn-outline btn-sm" onclick="openUrl('setting-esphome-url')" title="Open in browser" style="padding: 2px 6px;">
+                                        <span class="material-icons" style="font-size: 14px;">open_in_new</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="settings-item">
+                                <label>WiFi SSID</label>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span id="setting-wifi-ssid" class="settings-value">-</span>
+                                    <button class="btn btn-outline btn-sm" onclick="copyToClipboard('setting-wifi-ssid')" title="Copy SSID" style="padding: 2px 6px;">
+                                        <span class="material-icons" style="font-size: 14px;">content_copy</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="settings-item">
+                                <label>WiFi Password</label>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span id="setting-wifi-password" class="settings-value" style="font-family: monospace;">••••••••</span>
+                                    <button class="btn btn-outline btn-sm" onclick="togglePassword('setting-wifi-password')" title="Show/Hide" style="padding: 2px 6px;">
+                                        <span class="material-icons" style="font-size: 14px;">visibility</span>
+                                    </button>
+                                    <button class="btn btn-outline btn-sm" onclick="copyToClipboard('setting-wifi-password', true)" title="Copy password" style="padding: 2px 6px;">
+                                        <span class="material-icons" style="font-size: 14px;">content_copy</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="settings-item">
+                                <label>API Password</label>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span id="setting-api-password" class="settings-value" style="font-family: monospace;">••••••••</span>
+                                    <button class="btn btn-outline btn-sm" onclick="togglePassword('setting-api-password')" title="Show/Hide" style="padding: 2px 6px;">
+                                        <span class="material-icons" style="font-size: 14px;">visibility</span>
+                                    </button>
+                                    <button class="btn btn-outline btn-sm" onclick="copyToClipboard('setting-api-password', true)" title="Copy password" style="padding: 2px 6px;">
+                                        <span class="material-icons" style="font-size: 14px;">content_copy</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="settings-item">
+                                <label>OTA Password</label>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span id="setting-ota-password" class="settings-value" style="font-family: monospace;">••••••••</span>
+                                    <button class="btn btn-outline btn-sm" onclick="togglePassword('setting-ota-password')" title="Show/Hide" style="padding: 2px 6px;">
+                                        <span class="material-icons" style="font-size: 14px;">visibility</span>
+                                    </button>
+                                    <button class="btn btn-outline btn-sm" onclick="copyToClipboard('setting-ota-password', true)" title="Copy password" style="padding: 2px 6px;">
+                                        <span class="material-icons" style="font-size: 14px;">content_copy</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="settings-item">
+                                <label>API Encryption Key</label>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span id="setting-api-key" class="settings-value" style="font-family: monospace; font-size: 11px;">-</span>
+                                    <button class="btn btn-outline btn-sm" onclick="copyToClipboard('setting-api-key', true)" title="Copy key" style="padding: 2px 6px;">
+                                        <span class="material-icons" style="font-size: 14px;">content_copy</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="settings-note" style="background: rgba(255, 193, 7, 0.1); border-left: 3px solid #ffc107; padding: 8px 12px; margin-top: 12px; border-radius: 4px;">
+                            <span class="material-icons" style="font-size: 14px; color: #ffc107; vertical-align: middle;">info</span>
+                            <span style="font-size: 12px; color: var(--text-secondary);">Passwords are from <code style="background: var(--bg); padding: 2px 4px; border-radius: 2px;">secrets.yaml</code>. Keep them secure!</span>
                         </div>
                     </div>
 
@@ -1636,66 +1929,49 @@ ota_password: myotapassword"></textarea>
                 html += '<button class="btn btn-success" onclick="event.stopPropagation(); showUploadModal(\'' + device.name + '\')"><span class="material-icons">system_update</span>Update</button>';
                 html += '<button class="btn btn-outline" onclick="event.stopPropagation(); downloadFirmware(\'' + device.name + '\')"><span class="material-icons">download</span>Download</button>';
                 html += '<button class="btn btn-outline" onclick="event.stopPropagation(); showYaml(\'' + device.name + '\')"><span class="material-icons">code</span>YAML</button>';
+                html += '<button class="btn btn-outline" onclick="event.stopPropagation(); exportDevice(\'' + device.name + '\')" title="Export device config"><span class="material-icons">file_download</span>Export</button>';
+                html += '<button class="btn btn-outline" onclick="event.stopPropagation(); showCompareModal(\'' + device.name + '\')" title="Compare with another device"><span class="material-icons">compare</span>Compare</button>';
                 html += '<button class="btn btn-danger" onclick="event.stopPropagation(); deleteDevice(\'' + device.name + '\')" style="background: var(--error); color: white;"><span class="material-icons">delete</span>Delete</button>';
                 html += '</div></div></div>';
                 return html;
             }).join('');
         }
         
-        // Show chip visualization in modal
+        // Show chip visualization in modal - uses the same modal as YAML editor
         async function showChipVisualization(deviceName, platform, board) {
-            const modal = document.getElementById('chip-modal');
-            if (!modal) {
-                // Create modal if not exists
-                const newModal = document.createElement('div');
-                newModal.id = 'chip-modal';
-                newModal.className = 'modal';
-                newModal.innerHTML = `
-                    <div class="modal-content" style="max-width: 1200px; max-height: 90vh; overflow-y: auto;">
-                        <div class="modal-header">
-                            <h2><span class="material-icons" style="vertical-align: middle;">memory</span> Chip Visualization - ${deviceName}</h2>
-                            <span class="close" onclick="closeChipModal()">&times;</span>
-                        </div>
-                        <div class="modal-body">
-                            <div id="chip-container" style="display: flex; flex-direction: column; gap: 16px;">
-                                <div id="pin-visualization" style="width: 100%;"></div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                document.body.appendChild(newModal);
-            } else {
-                // Update title
-                const title = modal.querySelector('.modal-header h2');
-                if (title) {
-                    title.innerHTML = `<span class="material-icons" style="vertical-align: middle;">memory</span> Chip Visualization - ${deviceName}`;
-                }
-            }
+            // Get YAML content for this device
+            const yamlContent = await getDeviceYaml(deviceName);
             
-            document.getElementById('chip-modal').style.display = 'block';
+            // Store data for chip viz modal (for variant switching)
+            window.currentDeviceName = deviceName;
+            window.currentPlatform = platform;
+            window.currentBoard = board;
+            window.currentDeviceYaml = yamlContent || '';
             
-            // Get YAML content from editor
-            const yamlContent = typeof getEditorContent === 'function' ? getEditorContent() : document.getElementById('yaml-content')?.value || '';
+            // Store data for chip viz modal
+            window._chipVizData = {
+                deviceName: deviceName,
+                platform: platform,
+                board: board,
+                yamlContent: yamlContent || '',
+                integrations: [],
+                haEntities: []
+            };
             
-            // Check if full chip visualization is available
-            if (typeof renderFullChipVisualization === 'function') {
-                const chipContainer = document.getElementById('pin-visualization');
-                if (chipContainer) {
-                    chipContainer.innerHTML = '';
-                    const vizElement = renderFullChipVisualization(deviceName, platform, board, yamlContent);
-                    chipContainer.appendChild(vizElement);
-                }
-            } else {
-                // Fallback to old visualization
-                if (typeof updateChipVisualization === 'function') {
-                    await updateChipVisualization(platform, board);
-                }
-            }
+            // Call the shared modal function
+            showChipVizModal();
         }
         
-        function closeChipModal() {
-            const modal = document.getElementById('chip-modal');
-            if (modal) modal.style.display = 'none';
+        // Get YAML content for a device
+        async function getDeviceYaml(deviceName) {
+            try {
+                const response = await fetch(`/api/yaml/${deviceName}`);
+                const data = await response.json();
+                return data.yaml || '';
+            } catch (e) {
+                console.error('Failed to get YAML:', e);
+                return '';
+            }
         }
         
         // Cancel compile
@@ -1846,6 +2122,7 @@ ota_password: myotapassword"></textarea>
         function updateStatusBadge(status, text) {
             const badge = document.getElementById('status-badge');
             const textEl = document.getElementById('status-text');
+            if (!badge || !textEl) return;
             badge.className = 'status-badge';
             if (status === 'error') badge.classList.add('error');
             if (status === 'warning') badge.classList.add('warning');
@@ -1856,6 +2133,8 @@ ota_password: myotapassword"></textarea>
         function updateDeviceSelects() {
             const yamlSelect = document.getElementById('yaml-device-select');
             const logsSelect = document.getElementById('logs-device-select');
+            
+            if (!yamlSelect || !logsSelect) return;
             
             const options = devices.map(d => {
                 const configFile = d.configuration || `${d.name}.yaml`;
@@ -1975,6 +2254,71 @@ ota_password: myotapassword"></textarea>
                 const yamlData = await yamlResponse.json();
                 
                 if (yamlData.success) {
+                    // Decode YAML content first
+                    let decodedYaml = yamlData.yaml;
+                    if (decodedYaml) {
+                        try {
+                            console.log('Original YAML:', decodedYaml.substring(0, 100));
+                            
+                            // Remove 'content=' prefix if present
+                            if (decodedYaml.startsWith('content=')) {
+                                decodedYaml = decodedYaml.substring(8);
+                            }
+                            
+                            // Replace + with space
+                            decodedYaml = decodedYaml.replace(/\+/g, ' ');
+                            
+                            // Decode URL encoding safely
+                            if (decodedYaml.indexOf('%') !== -1) {
+                                try {
+                                    decodedYaml = decodeURIComponent(decodedYaml);
+                                } catch (e) {
+                                    console.log('First decode failed, trying manual decode');
+                                    // Manual decode for common patterns
+                                    decodedYaml = decodedYaml
+                                        .replace(/%3A/g, ':')
+                                        .replace(/%2F/g, '/')
+                                        .replace(/%20/g, ' ')
+                                        .replace(/%0A/g, '\n')
+                                        .replace(/%0D/g, '\r')
+                                        .replace(/%09/g, '\t')
+                                        .replace(/%22/g, '"')
+                                        .replace(/%27/g, "'")
+                                        .replace(/%21/g, '!')
+                                        .replace(/%40/g, '@')
+                                        .replace(/%23/g, '#')
+                                        .replace(/%24/g, '$')
+                                        .replace(/%25/g, '%')
+                                        .replace(/%5E/g, '^')
+                                        .replace(/%26/g, '&')
+                                        .replace(/%2A/g, '*')
+                                        .replace(/%28/g, '(')
+                                        .replace(/%29/g, ')')
+                                        .replace(/%5B/g, '[')
+                                        .replace(/%5D/g, ']')
+                                        .replace(/%7B/g, '{')
+                                        .replace(/%7D/g, '}')
+                                        .replace(/%3D/g, '=')
+                                        .replace(/%3F/g, '?')
+                                        .replace(/%3C/g, '<')
+                                        .replace(/%3E/g, '>')
+                                        .replace(/%2C/g, ',')
+                                        .replace(/%3B/g, ';')
+                                        .replace(/%2B/g, '+');
+                                }
+                            }
+                            
+                            console.log('Decoded YAML:', decodedYaml.substring(0, 100));
+                            
+                            // Update yamlData with decoded content
+                            yamlData.yaml = decodedYaml;
+                        } catch (e) {
+                            console.error('YAML decode error:', e);
+                        }
+                    }
+                    
+                    console.log('Setting editor content, decoded:', yamlData.yaml.substring(0, 100));
+                    
                     // Use Monaco Editor if available, otherwise fallback to textarea
                     if (typeof setEditorContent === 'function' && editor) {
                         setEditorContent(yamlData.yaml);
@@ -2002,15 +2346,73 @@ ota_password: myotapassword"></textarea>
                 
                 if (deviceData.success && deviceData.device) {
                     const device = deviceData.device;
+                    // Use decoded YAML from yamlData
+                    const yamlContent = yamlData.yaml || '';
+                    
+                    // Extract platform and board from YAML if not in device data
+                    let platform = device.platform || 'Unknown';
+                    let board = device.board || '-';
+                    let address = device.address || 'Unknown';
+                    let version = device.deployed_version || 'Unknown';
+                    let status = device.status || 'Unknown';
+                    
+                    // Parse YAML for missing info
+                    if (yamlContent) {
+                        // Extract platform
+                        if (platform === 'Unknown' || !platform) {
+                            if (yamlContent.includes('esp32:')) {
+                                platform = 'ESP32';
+                            } else if (yamlContent.includes('esp8266:')) {
+                                platform = 'ESP8266';
+                            }
+                        }
+                        
+                        // Extract board from YAML
+                        if (board === '-' || board === 'null' || !board) {
+                            const boardMatch = yamlContent.match(/board:\s*([^\s\n]+)/);
+                            if (boardMatch) {
+                                board = boardMatch[1].trim();
+                                console.log('Board extracted from YAML:', board);
+                            }
+                        }
+                        
+                        // Extract platform from board name
+                        if (board && board !== '-') {
+                            if (board.includes('esp32') || board.includes('ESP32')) {
+                                platform = 'ESP32';
+                            } else if (board.includes('esp8266') || board.includes('ESP8266')) {
+                                platform = 'ESP8266';
+                            }
+                        }
+                    }
                     
                     // Update device info
                     const deviceInfoHtml = `
-                        <div style="margin-bottom: 8px;"><strong>Platform:</strong> ${device.platform || 'Unknown'}</div>
-                        <div style="margin-bottom: 8px;"><strong>Address:</strong> ${device.address || 'Unknown'}</div>
-                        <div style="margin-bottom: 8px;"><strong>Version:</strong> ${device.deployed_version || 'Unknown'}</div>
-                        <div><strong>Status:</strong> ${device.status || 'Unknown'}</div>
+                        <div style="margin-bottom: 8px;"><strong>Platform:</strong> ${platform}</div>
+                        <div style="margin-bottom: 8px;"><strong>Board:</strong> ${board}</div>
+                        <div style="margin-bottom: 8px;"><strong>Address:</strong> ${address}</div>
+                        <div style="margin-bottom: 8px;"><strong>Version:</strong> ${version}</div>
+                        <div><strong>Status:</strong> ${status}</div>
                     `;
                     document.getElementById('yaml-device-info').innerHTML = deviceInfoHtml;
+                    
+                    // Store data for chip viz modal
+                    window._chipVizData = {
+                        deviceName: deviceName,
+                        platform: platform,
+                        board: board,
+                        yamlContent: yamlContent,
+                        integrations: device.integrations || [],
+                        haEntities: device.ha_entities || []
+                    };
+                    
+                    console.log('Chip viz data stored:', window._chipVizData);
+                    
+                    // Show chip viz button
+                    const chipVizBtn = document.getElementById('chip-viz-btn');
+                    if (chipVizBtn) {
+                        chipVizBtn.style.display = 'flex';
+                    }
                     
                     // Update integrations
                     const integrations = device.integrations || [];
@@ -2021,29 +2423,42 @@ ota_password: myotapassword"></textarea>
                     `;
                     document.getElementById('yaml-integrations').innerHTML = integrationsHtml || '<div style="color: var(--text-secondary);">No integrations found</div>';
                     
-                    // HA entities - note about needing to enable API
-                    const haEntitiesHtml = `
-                        <div style="color: var(--text-secondary); font-size: 13px; line-height: 1.6;">
-                            <p style="margin-bottom: 8px;">Home Assistant entities are automatically discovered when:</p>
-                            <ul style="margin-left: 20px; margin-bottom: 12px;">
-                                <li>Device has <code style="background: var(--code-bg); padding: 2px 6px; border-radius: 4px;">api:</code> component enabled</li>
-                                <li>Device is connected to Home Assistant via ESPHome integration</li>
-                            </ul>
-                            <p style="margin-bottom: 8px;"><strong>Current integrations:</strong> ${integrations.length}</p>
-                            <p style="font-style: italic;">Entities will appear here once the device is integrated with Home Assistant.</p>
-                        </div>
-                    `;
+                    // HA entities
+                    const haEntities = device.ha_entities || [];
+                    let haEntitiesHtml = '';
+                    if (haEntities.length > 0) {
+                        haEntitiesHtml = `
+                            <div style="font-size: 13px; margin-bottom: 8px;">
+                                <strong>${haEntities.length} entities found</strong>
+                            </div>
+                            <div style="max-height: 200px; overflow-y: auto;">
+                                ${haEntities.slice(0, 10).map(e => `
+                                    <div style="padding: 6px 8px; background: var(--bg); border-radius: 4px; margin-bottom: 4px; font-size: 12px; display: flex; align-items: center; gap: 8px;">
+                                        <span style="padding: 2px 6px; background: var(--primary); color: white; border-radius: 4px; font-size: 10px;">${e.domain}</span>
+                                        <span style="flex: 1;">${e.friendly_name || e.entity_id}</span>
+                                        <span style="color: var(--text-secondary); font-size: 11px;">${e.state || '-'}</span>
+                                    </div>
+                                `).join('')}
+                                ${haEntities.length > 10 ? `<div style="text-align: center; color: var(--text-secondary); font-size: 12px; padding: 8px;">+${haEntities.length - 10} more</div>` : ''}
+                            </div>
+                        `;
+                    } else {
+                        haEntitiesHtml = `
+                            <div style="color: var(--text-secondary); font-size: 13px; line-height: 1.6;">
+                                <p style="margin-bottom: 8px;">Home Assistant entities are automatically discovered when:</p>
+                                <ul style="margin-left: 20px; margin-bottom: 12px;">
+                                    <li>Device has <code style="background: var(--code-bg); padding: 2px 6px; border-radius: 4px;">api:</code> component enabled</li>
+                                    <li>Device is connected to Home Assistant via ESPHome integration</li>
+                                </ul>
+                            </div>
+                        `;
+                    }
                     document.getElementById('yaml-entities').innerHTML = haEntitiesHtml;
                     
                     // Update selected board for pin visualization
                     if (device.platform) {
                         selectedPlatform = device.platform;
                         selectedBoard = device.board || 'esp32dev';
-                        
-                        // Update chip visualization
-                        if (typeof updateChipVisualization === 'function') {
-                            updateChipVisualization(selectedPlatform, selectedBoard);
-                        }
                     }
                 } else {
                     document.getElementById('yaml-entities').innerHTML = '<div style="color: var(--text-secondary);">Failed to load device details</div>';
@@ -2110,16 +2525,36 @@ ota_password: myotapassword"></textarea>
         
         // Save YAML
         async function saveYaml() {
-            const deviceName = document.getElementById('yaml-device-select').value;
+            let deviceName = document.getElementById('yaml-device-select').value;
+            
+            // Check for pending new device
+            if (window._pendingNewDevice && window._pendingYaml) {
+                deviceName = window._pendingNewDevice;
+            }
+            
             if (!deviceName) {
-                alert('Please select a device');
+                showToast('error', 'No Device', 'Please select or create a device first');
                 return;
+            }
+            
+            // Validate YAML before saving
+            if (typeof validateAndShowErrors === 'function') {
+                const yamlContent = window.monacoEditor ? window.monacoEditor.getValue() : document.getElementById('yaml-content').value;
+                const validationResult = validateYAML(yamlContent);
+                
+                if (!validationResult.valid) {
+                    showToast('error', 'Validation Failed', 'Please fix YAML errors before saving');
+                    validateAndShowErrors();
+                    return;
+                }
             }
             
             // Use Monaco Editor if available, otherwise fallback to textarea
             let yaml;
             if (typeof getEditorContent === 'function' && editor) {
                 yaml = getEditorContent();
+            } else if (window._pendingYaml) {
+                yaml = window._pendingYaml;
             } else {
                 yaml = document.getElementById('yaml-content').value;
             }
@@ -2133,14 +2568,23 @@ ota_password: myotapassword"></textarea>
                 const data = await response.json();
                 
                 if (data.success) {
-                    alert('Configuration saved successfully');
+                    showToast('success', 'Saved', `Configuration saved for ${deviceName}`);
                     addLog(deviceName, 'success', 'Configuration saved');
+                    
+                    // Clear pending state
+                    window._pendingNewDevice = null;
+                    window._pendingYaml = null;
+                    
+                    // Refresh device list
+                    if (typeof loadDevices === 'function') {
+                        loadDevices();
+                    }
                 } else {
-                    alert('Failed to save configuration: ' + (data.error || 'Unknown error'));
+                    showToast('error', 'Save Failed', data.error || 'Unknown error');
                 }
             } catch (e) {
                 console.error('Failed to save YAML:', e);
-                alert('Failed to save configuration');
+                showToast('error', 'Save Failed', 'Failed to save configuration');
             }
         }
         
@@ -2177,48 +2621,118 @@ ota_password: myotapassword"></textarea>
         
         async function downloadFirmware(name) {
             showToast('info', 'Downloading', `Downloading firmware for ${name}...`);
-            
+            window.location.href = `${API_BASE}/api/download/${name}`;
+        }
+        
+        // Export device configuration
+        async function exportDevice(name) {
             try {
-                // First compile if needed
-                const compileResp = await fetch(`${API_BASE}/api/compile/${name}/async`, { method: 'POST' });
-                const compileData = await compileResp.json();
+                showToast('info', 'Exporting', `Exporting ${name} configuration...`);
                 
-                if (compileData.success) {
-                    showToast('info', 'Compiling', `Compiling ${name} before download...`);
+                const response = await fetch(`${API_BASE}/api/yaml/${name}`);
+                const data = await response.json();
+                
+                if (data.success && data.yaml) {
+                    // Create download
+                    const blob = new Blob([data.yaml], { type: 'text/yaml' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = name + '.yaml';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
                     
-                    // Wait for compile to finish (poll)
-                    let compiled = false;
-                    for (let i = 0; i < 60; i++) {
-                        await new Promise(r => setTimeout(r, 2000));
-                        const statusResp = await fetch(`${API_BASE}/api/task/${compileData.task_id}`);
-                        const statusData = await statusResp.json();
-                        
-                        if (statusData.status === 'compiled') {
-                            compiled = true;
-                            break;
-                        } else if (statusData.status === 'error') {
-                            showToast('error', 'Compile Failed', statusData.result || 'Unknown error');
-                            return;
-                        }
-                    }
-                    
-                    if (!compiled) {
-                        showToast('error', 'Timeout', 'Compilation timed out');
-                        return;
-                    }
+                    showToast('success', 'Exported', `Exported ${name}.yaml`);
+                } else {
+                    showToast('error', 'Export Failed', 'Failed to get device configuration');
                 }
-                
-                // Download the firmware
-                const downloadUrl = `${API_BASE}/api/download/${name}`;
-                const a = document.createElement('a');
-                a.href = downloadUrl;
-                a.download = `${name}.bin`;
-                a.click();
-                
-                showToast('success', 'Download Started', `Downloading ${name}.bin`);
             } catch (e) {
-                showToast('error', 'Error', e.message);
+                showToast('error', 'Export Failed', e.message);
             }
+        }
+        
+        // Import device configuration
+        function showImportModal() {
+            const modal = document.getElementById('import-modal');
+            if (modal) {
+                modal.classList.add('active');
+            }
+        }
+        
+        function closeImportModal() {
+            const modal = document.getElementById('import-modal');
+            if (modal) {
+                modal.classList.remove('active');
+            }
+        }
+        
+        async function importDevice() {
+            const fileInput = document.getElementById('import-file');
+            const deviceName = document.getElementById('import-device-name').value.trim();
+            
+            if (!fileInput.files || fileInput.files.length === 0) {
+                showToast('error', 'No File', 'Please select a YAML file');
+                return;
+            }
+            
+            if (!deviceName) {
+                showToast('error', 'No Name', 'Please enter a device name');
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            
+            reader.onload = async function(e) {
+                const yaml = e.target.result;
+                
+                try {
+                    const response = await fetch(`${API_BASE}/api/yaml/${deviceName}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ yaml: yaml })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        showToast('success', 'Imported', `Imported ${deviceName}`);
+                        closeImportModal();
+                        loadDevices();
+                    } else {
+                        showToast('error', 'Import Failed', data.error || 'Unknown error');
+                    }
+                } catch (err) {
+                    showToast('error', 'Import Failed', err.message);
+                }
+            };
+            
+            reader.readAsText(file);
+        }
+        
+        // Export all devices
+        async function exportAllDevices() {
+            if (!window.devices || window.devices.length === 0) {
+                showToast('error', 'No Devices', 'No devices to export');
+                return;
+            }
+            
+            showToast('info', 'Exporting', `Exporting ${window.devices.length} devices...`);
+            
+            // Create a zip-like structure using multiple downloads
+            for (const device of window.devices) {
+                await exportDevice(device.name);
+                await new Promise(resolve => setTimeout(resolve, 500)); // Delay between exports
+            }
+            
+            showToast('success', 'Export Complete', `Exported ${window.devices.length} devices`);
+        }
+        
+        async function downloadFirmware(name) {
+            showToast('info', 'Downloading', `Downloading firmware for ${name}...`);
+            window.location.href = `${API_BASE}/api/download/${name}`;
         }
         
         function showManualUploadInstructions(name) {
@@ -3133,6 +3647,37 @@ Device-specific instructions:
                     input.style.background = 'var(--bg)';
                 });
                 
+                // Load ESPHome access info (from secrets)
+                let esphomeUrl = health.esphome_dashboard_url || 'http://192.168.1.64:6052';
+                // Replace Docker container name with host IP
+                if (esphomeUrl.includes('://esphome:') || esphomeUrl.includes('://esphome-')) {
+                    esphomeUrl = esphomeUrl.replace(/:\/\/[^:]+/, '://192.168.1.64');
+                }
+                document.getElementById('setting-esphome-url').textContent = esphomeUrl;
+                document.getElementById('setting-esphome-url').dataset.full = esphomeUrl;
+                
+                document.getElementById('setting-wifi-ssid').textContent = health.wifi_ssid || 'Not set';
+                document.getElementById('setting-wifi-ssid').dataset.full = health.wifi_ssid || '';
+                
+                // Store WiFi password (hidden by default)
+                document.getElementById('setting-wifi-password').textContent = '••••••••';
+                document.getElementById('setting-wifi-password').dataset.full = health.wifi_password || '';
+                document.getElementById('setting-wifi-password').dataset.hidden = 'true';
+                
+                // Store API password (hidden by default)
+                document.getElementById('setting-api-password').textContent = '••••••••';
+                document.getElementById('setting-api-password').dataset.full = health.api_password || '';
+                document.getElementById('setting-api-password').dataset.hidden = 'true';
+                
+                // Store OTA password (hidden by default)
+                document.getElementById('setting-ota-password').textContent = '••••••••';
+                document.getElementById('setting-ota-password').dataset.full = health.ota_password || '';
+                document.getElementById('setting-ota-password').dataset.hidden = 'true';
+                
+                // Store API encryption key (truncated)
+                document.getElementById('setting-api-key').textContent = health.api_encryption_key || 'Not set';
+                document.getElementById('setting-api-key').dataset.full = health.api_encryption_key || '';
+                
                 // Update status
                 updateMQTTStatus('success', 'Connected');
                 updateHAStatus('success', 'Connected');
@@ -3141,6 +3686,47 @@ Device-specific instructions:
                 console.error('Failed to load settings:', error);
                 updateMQTTStatus('error', 'Error loading settings');
                 updateHAStatus('error', 'Error loading settings');
+            }
+        }
+        
+        // Helper functions for ESPHome Access section
+        function togglePassword(elementId) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            
+            const isHidden = el.dataset.hidden === 'true';
+            const fullValue = el.dataset.full || '';
+            
+            if (isHidden) {
+                el.textContent = fullValue || 'Not set';
+                el.dataset.hidden = 'false';
+                el.style.fontFamily = 'monospace';
+            } else {
+                el.textContent = '••••••••';
+                el.dataset.hidden = 'true';
+            }
+        }
+        
+        function copyToClipboard(elementId, useFullValue = false) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            
+            const value = useFullValue ? (el.dataset.full || el.textContent) : el.textContent;
+            
+            navigator.clipboard.writeText(value).then(() => {
+                showToast('success', 'Copied!', value.substring(0, 30) + (value.length > 30 ? '...' : ''));
+            }).catch(err => {
+                showToast('error', 'Copy Failed', 'Could not copy to clipboard');
+            });
+        }
+        
+        function openUrl(elementId) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            
+            const url = el.dataset.full || el.textContent;
+            if (url && url !== '-') {
+                window.open(url, '_blank');
             }
         }
         
@@ -3214,9 +3800,9 @@ Device-specific instructions:
             await loadSettings();
         }
 
-        // Template definitions with parameters
+        // Template definitions with parameters - Enhanced
         const TEMPLATES = {
-            // Sensors
+            // === SENSORS ===
             'sensor.adc': {
                 name: 'ADC Sensor',
                 category: 'sensor',
@@ -3231,22 +3817,24 @@ Device-specific instructions:
     name: "{{name}}"
     update_interval: {{update_interval}}
     filters:
-      - lambda: return x * 1.0;`
+      - lambda: return x * 1.0;`,
+                peripheral: 'adc'
             },
             'sensor.dallas': {
-                name: 'Dallas Temperature',
+                name: 'Dallas Temperature (DS18B20)',
                 category: 'sensor',
                 params: [
                     { name: 'name', label: 'Name', default: 'Temperature' },
                     { name: 'pin', label: 'GPIO Pin', default: 'GPIO4' }
                 ],
-                template: `dallas:
+                template: `one_wire:
   - pin: {{pin}}
-    
+
 sensor:
   - platform: dallas
     address: 0x...
-    name: "{{name}}"`
+    name: "{{name}}"`,
+                peripheral: 'ds18b20'
             },
             'sensor.dht': {
                 name: 'DHT Temperature/Humidity',
@@ -3254,7 +3842,7 @@ sensor:
                 params: [
                     { name: 'name', label: 'Name', default: 'DHT Sensor' },
                     { name: 'pin', label: 'GPIO Pin', default: 'GPIO4' },
-                    { name: 'model', label: 'Model', default: 'DHT22', options: ['DHT11', 'DHT22', 'DHT12', 'AM2302'] }
+                    { name: 'model', label: 'Model', default: 'DHT22', options: ['DHT11', 'DHT22', 'DHT12', 'AM2302', 'AM2320'] }
                 ],
                 template: `sensor:
   - platform: dht
@@ -3264,17 +3852,21 @@ sensor:
     humidity:
       name: "{{name}} Humidity"
     model: {{model}}
-    update_interval: 60s`
+    update_interval: 60s`,
+                peripheral: 'dht22'
             },
             'sensor.bme280': {
-                name: 'BME280 Environment',
+                name: 'BME280 (Temp/Hum/Pressure)',
                 category: 'sensor',
                 params: [
-                    { name: 'name', label: 'Name', default: 'BME280' }
+                    { name: 'name', label: 'Name', default: 'BME280' },
+                    { name: 'sda', label: 'SDA Pin', default: 'GPIO8' },
+                    { name: 'scl', label: 'SCL Pin', default: 'GPIO9' },
+                    { name: 'address', label: 'I2C Address', default: '0x76', options: ['0x76', '0x77'] }
                 ],
                 template: `i2c:
-  sda: GPIO21
-  scl: GPIO22
+  sda: {{sda}}
+  scl: {{scl}}
   scan: true
 
 sensor:
@@ -3285,81 +3877,174 @@ sensor:
       name: "{{name}} Pressure"
     humidity:
       name: "{{name}} Humidity"
-    address: 0x76
-    update_interval: 60s`
+    address: {{address}}
+    update_interval: 60s`,
+                peripheral: 'bme280'
             },
-            'sensor.hdc1080': {
-                name: 'HDC1080 Temperature/Humidity',
+            'sensor.bmp280': {
+                name: 'BMP280 (Temp/Pressure)',
                 category: 'sensor',
                 params: [
-                    { name: 'name', label: 'Name', default: 'HDC1080' }
+                    { name: 'name', label: 'Name', default: 'BMP280' },
+                    { name: 'sda', label: 'SDA Pin', default: 'GPIO8' },
+                    { name: 'scl', label: 'SCL Pin', default: 'GPIO9' }
                 ],
                 template: `i2c:
-  sda: GPIO21
-  scl: GPIO22
+  sda: {{sda}}
+  scl: {{scl}}
   scan: true
 
 sensor:
-  - platform: hdc1080
+  - platform: bmp280_i2c
+    temperature:
+      name: "{{name}} Temperature"
+    pressure:
+      name: "{{name}} Pressure"
+    address: 0x76
+    update_interval: 60s`,
+                peripheral: 'bmp280'
+            },
+            'sensor.aht10': {
+                name: 'AHT10/AHT20 (Temp/Hum)',
+                category: 'sensor',
+                params: [
+                    { name: 'name', label: 'Name', default: 'AHT20' },
+                    { name: 'sda', label: 'SDA Pin', default: 'GPIO8' },
+                    { name: 'scl', label: 'SCL Pin', default: 'GPIO9' }
+                ],
+                template: `i2c:
+  sda: {{sda}}
+  scl: {{scl}}
+  scan: true
+
+sensor:
+  - platform: aht10
     temperature:
       name: "{{name}} Temperature"
     humidity:
       name: "{{name}} Humidity"
-    update_interval: 60s`
+    update_interval: 60s`,
+                peripheral: 'aht20'
             },
-            'sensor.hlw8012': {
-                name: 'HLW8012 Power',
+            'sensor.sht3x': {
+                name: 'SHT3x (Temp/Hum)',
+                category: 'sensor',
+                params: [
+                    { name: 'name', label: 'Name', default: 'SHT3x' },
+                    { name: 'sda', label: 'SDA Pin', default: 'GPIO8' },
+                    { name: 'scl', label: 'SCL Pin', default: 'GPIO9' }
+                ],
+                template: `i2c:
+  sda: {{sda}}
+  scl: {{scl}}
+  scan: true
+
+sensor:
+  - platform: sht3xd
+    temperature:
+      name: "{{name}} Temperature"
+    humidity:
+      name: "{{name}} Humidity"
+    address: 0x44
+    update_interval: 60s`,
+                peripheral: 'sht3x'
+            },
+            'sensor.scd4x': {
+                name: 'SCD4x CO2 Sensor',
+                category: 'sensor',
+                params: [
+                    { name: 'name', label: 'Name', default: 'SCD40' },
+                    { name: 'sda', label: 'SDA Pin', default: 'GPIO8' },
+                    { name: 'scl', label: 'SCL Pin', default: 'GPIO9' }
+                ],
+                template: `i2c:
+  sda: {{sda}}
+  scl: {{scl}}
+  scan: true
+
+sensor:
+  - platform: scd4x
+    co2:
+      name: "{{name}} CO2"
+    temperature:
+      name: "{{name}} Temperature"
+    humidity:
+      name: "{{name}} Humidity"
+    update_interval: 60s`,
+                peripheral: 'scd4x'
+            },
+            'sensor.ld1125h': {
+                name: 'LD1125H mmWave Presence',
+                category: 'sensor',
+                params: [
+                    { name: 'name', label: 'Name', default: 'Presence' },
+                    { name: 'rx_pin', label: 'RX Pin', default: 'GPIO44' },
+                    { name: 'tx_pin', label: 'TX Pin', default: 'GPIO43' }
+                ],
+                template: `uart:
+  - id: ld1125h_uart
+    rx_pin: {{rx_pin}}
+    tx_pin: {{tx_pin}}
+    baud_rate: 115200
+
+sensor:
+  - platform: ld1125h
+    uart_id: ld1125h_uart
+    presence_distance:
+      name: "{{name}} Distance"
+    presence_energy:
+      name: "{{name}} Energy"`,
+                peripheral: 'ld1125h'
+            },
+            'sensor.ina219': {
+                name: 'INA219 Current/Voltage',
                 category: 'sensor',
                 params: [
                     { name: 'name', label: 'Name', default: 'Power' },
-                    { name: 'sel_pin', label: 'SEL Pin', default: 'GPIO5' },
-                    { name: 'cf_pin', label: 'CF Pin', default: 'GPIO14' },
-                    { name: 'cf1_pin', label: 'CF1 Pin', default: 'GPIO13' }
+                    { name: 'sda', label: 'SDA Pin', default: 'GPIO8' },
+                    { name: 'scl', label: 'SCL Pin', default: 'GPIO9' },
+                    { name: 'address', label: 'I2C Address', default: '0x40' }
                 ],
-                template: `sensor:
-  - platform: hlw8012
-    sel_pin: {{sel_pin}}
-    cf_pin: {{cf_pin}}
-    cf1_pin: {{cf1_pin}}
-    voltage:
-      name: "{{name}} Voltage"
+                template: `i2c:
+  sda: {{sda}}
+  scl: {{scl}}
+  scan: true
+
+sensor:
+  - platform: ina219
+    address: {{address}}
+    shunt_resistance: 0.1 ohm
     current:
       name: "{{name}} Current"
     power:
-      name: "{{name}} Power"`
+      name: "{{name}} Power"
+    bus_voltage:
+      name: "{{name}} Voltage"
+    update_interval: 60s`,
+                peripheral: 'ina219'
             },
-            'sensor.pulse_counter': {
-                name: 'Pulse Counter',
-                category: 'sensor',
-                params: [
-                    { name: 'name', label: 'Name', default: 'Pulse Counter' },
-                    { name: 'pin', label: 'GPIO Pin', default: 'GPIO4' }
-                ],
-                template: `sensor:
-  - platform: pulse_counter
-    pin: {{pin}}
-    name: "{{name}}"
-    unit_of_measurement: 'pulses/min'
-    update_interval: 60s`
-            },
-            'sensor.ultrasonic': {
-                name: 'Ultrasonic Distance',
+            'sensor.vl53l0x': {
+                name: 'VL53L0X Distance Sensor',
                 category: 'sensor',
                 params: [
                     { name: 'name', label: 'Name', default: 'Distance' },
-                    { name: 'trigger_pin', label: 'Trigger Pin', default: 'GPIO5' },
-                    { name: 'echo_pin', label: 'Echo Pin', default: 'GPIO4' }
+                    { name: 'sda', label: 'SDA Pin', default: 'GPIO8' },
+                    { name: 'scl', label: 'SCL Pin', default: 'GPIO9' }
                 ],
-                template: `sensor:
-  - platform: ultrasonic
-    trigger_pin: {{trigger_pin}}
-    echo_pin: {{echo_pin}}
+                template: `i2c:
+  sda: {{sda}}
+  scl: {{scl}}
+  scan: true
+
+sensor:
+  - platform: vl53l0x
     name: "{{name}}"
-    update_interval: 60s`
+    update_interval: 60s`,
+                peripheral: 'vl53l0x'
             },
-            // Binary Sensors
+            // === BINARY SENSORS ===
             'binary_sensor.gpio': {
-                name: 'GPIO Binary Sensor',
+                name: 'GPIO Button/Switch',
                 category: 'binary_sensor',
                 params: [
                     { name: 'name', label: 'Name', default: 'Button' },
@@ -3377,10 +4062,11 @@ sensor:
     name: "{{name}}"
     filters:
       - delayed_on: 10ms
-      - delayed_off: 10ms`
+      - delayed_off: 10ms`,
+                peripheral: 'button'
             },
             'binary_sensor.pir': {
-                name: 'PIR Motion',
+                name: 'PIR Motion Sensor',
                 category: 'binary_sensor',
                 params: [
                     { name: 'name', label: 'Name', default: 'Motion' },
@@ -3392,7 +4078,8 @@ sensor:
     name: "{{name}}"
     device_class: motion
     filters:
-      - delayed_off: 30s`
+      - delayed_off: 30s`,
+                peripheral: 'gpio'
             },
             'binary_sensor.status': {
                 name: 'Status Binary Sensor',
@@ -3404,9 +4091,9 @@ sensor:
   - platform: status
     name: "{{name}}"`
             },
-            // Switches
+            // === SWITCHES ===
             'switch.gpio': {
-                name: 'GPIO Switch',
+                name: 'GPIO Switch (Relay)',
                 category: 'switch',
                 params: [
                     { name: 'name', label: 'Name', default: 'Relay' },
@@ -3418,7 +4105,8 @@ sensor:
     pin: {{pin}}
     name: "{{name}}"
     id: {{id}}
-    restore_mode: ALWAYS_OFF`
+    restore_mode: ALWAYS_OFF`,
+                peripheral: 'relay'
             },
             'switch.sonoff': {
                 name: 'Sonoff Basic',
@@ -3438,7 +4126,8 @@ binary_sensor:
       number: GPIO0
       mode: INPUT_PULLUP
       inverted: true
-    name: "{{name}} Button"`
+    name: "{{name}} Button"`,
+                peripheral: 'relay'
             },
             'switch.template': {
                 name: 'Template Switch',
@@ -3829,6 +4518,381 @@ fan:
     id: message_text
     optimistic: true
     max_length: 255`
+            },
+            // Additional Sensors
+            'sensor.ld2410': {
+                name: 'LD2410 Presence Sensor',
+                category: 'sensor',
+                params: [
+                    { name: 'name', label: 'Name', default: 'Presence' },
+                    { name: 'tx_pin', label: 'TX Pin', default: 'GPIO16' },
+                    { name: 'rx_pin', label: 'RX Pin', default: 'GPIO17' }
+                ],
+                template: `uart:
+  tx_pin: {{tx_pin}}
+  rx_pin: {{rx_pin}}
+  baud_rate: 256000
+  id: uart_ld2410
+
+ld2410:
+  uart_id: uart_ld2410
+  light_threshold: 50
+  max_distance: 6.0
+
+binary_sensor:
+  - platform: ld2410
+    has_target:
+      name: "{{name}}"`
+            },
+            'sensor.scd4x': {
+                name: 'SCD4x CO2 Sensor',
+                category: 'sensor',
+                params: [
+                    { name: 'name', label: 'Name', default: 'CO2' }
+                ],
+                template: `i2c:
+  sda: GPIO21
+  scl: GPIO22
+  scan: true
+
+sensor:
+  - platform: scd4x
+    co2:
+      name: "{{name}} CO2"
+    temperature:
+      name: "{{name}} Temperature"
+    humidity:
+      name: "{{name}} Humidity"
+    update_interval: 60s`
+            },
+            'sensor.ld1125h': {
+                name: 'LD1125H Presence Sensor',
+                category: 'sensor',
+                params: [
+                    { name: 'name', label: 'Name', default: 'Presence' },
+                    { name: 'tx_pin', label: 'TX Pin', default: 'GPIO16' },
+                    { name: 'rx_pin', label: 'RX Pin', default: 'GPIO17' }
+                ],
+                template: `uart:
+  tx_pin: {{tx_pin}}
+  rx_pin: {{rx_pin}}
+  baud_rate: 115200
+  id: uart_ld1125h
+
+sensor:
+  - platform: ld1125h
+    uart_id: uart_ld1125h
+    presence:
+      name: "{{name}} Presence"
+    spectral_line:
+      name: "{{name}} Spectral Line"`
+            },
+            'sensor.vl53l0x': {
+                name: 'VL53L0X Distance Sensor',
+                category: 'sensor',
+                params: [
+                    { name: 'name', label: 'Name', default: 'Distance' }
+                ],
+                template: `i2c:
+  sda: GPIO21
+  scl: GPIO22
+  scan: true
+
+sensor:
+  - platform: vl53l0x
+    name: "{{name}}"
+    update_interval: 60s`
+            },
+            'sensor.ina219': {
+                name: 'INA219 Current Sensor',
+                category: 'sensor',
+                params: [
+                    { name: 'name', label: 'Name', default: 'Power' }
+                ],
+                template: `i2c:
+  sda: GPIO21
+  scl: GPIO22
+  scan: true
+
+sensor:
+  - platform: ina219
+    address: 0x40
+    shunt_resistance: 0.1
+    current:
+      name: "{{name}} Current"
+    power:
+      name: "{{name}} Power"
+    bus_voltage:
+      name: "{{name}} Voltage"`
+            },
+            // Additional Binary Sensors
+            'binary_sensor.apds9960': {
+                name: 'APDS9960 Gesture Sensor',
+                category: 'binary_sensor',
+                params: [
+                    { name: 'name', label: 'Name', default: 'Gesture' }
+                ],
+                template: `i2c:
+  sda: GPIO21
+  scl: GPIO22
+  scan: true
+
+binary_sensor:
+  - platform: apds9960
+    direction:
+      name: "{{name}}"
+    proximity:
+      name: "{{name}} Proximity"`
+            },
+            'binary_sensor.rc522': {
+                name: 'RC522 RFID Reader',
+                category: 'binary_sensor',
+                params: [
+                    { name: 'name', label: 'Name', default: 'RFID' },
+                    { name: 'cs_pin', label: 'CS Pin', default: 'GPIO5' },
+                    { name: 'mosi', label: 'MOSI Pin', default: 'GPIO23' },
+                    { name: 'miso', label: 'MISO Pin', default: 'GPIO19' },
+                    { name: 'clk', label: 'CLK Pin', default: 'GPIO18' }
+                ],
+                template: `spi:
+  mosi_pin: {{mosi}}
+  miso_pin: {{miso}}
+  clk_pin: {{clk}}
+  id: spi_bus
+
+rc522_spi:
+  cs_pin: {{cs_pin}}
+  spi_id: spi_bus
+  id: rfid_reader
+  
+binary_sensor:
+  - platform: rc522
+    uid: "ABCDEF"
+    name: "{{name}}"`
+            },
+            // Additional Displays
+            'display.st7789': {
+                name: 'ST7789 TFT Display',
+                category: 'display',
+                params: [
+                    { name: 'name', label: 'Name', default: 'Display' },
+                    { name: 'cs_pin', label: 'CS Pin', default: 'GPIO5' },
+                    { name: 'dc_pin', label: 'DC Pin', default: 'GPIO16' },
+                    { name: 'reset_pin', label: 'Reset Pin', default: 'GPIO17' }
+                ],
+                template: `spi:
+  mosi_pin: GPIO23
+  clk_pin: GPIO18
+  id: spi_bus
+
+display:
+  - platform: st7789
+    cs_pin: {{cs_pin}}
+    dc_pin: {{dc_pin}}
+    reset_pin: {{reset_pin}}
+    id: my_display
+    dimensions: 240x240
+    lambda: |-
+      it.print(0, 0, id(my_font), "Hello!");`
+            },
+            'display.ssd1306_i2c': {
+                name: 'SSD1306 OLED I2C',
+                category: 'display',
+                params: [
+                    { name: 'name', label: 'Name', default: 'OLED' },
+                    { name: 'sda', label: 'SDA Pin', default: 'GPIO21' },
+                    { name: 'scl', label: 'SCL Pin', default: 'GPIO22' }
+                ],
+                template: `i2c:
+  sda: {{sda}}
+  scl: {{scl}}
+  scan: true
+
+display:
+  - platform: ssd1306_i2c
+    id: my_display
+    address: 0x3C
+    dimensions: 128x64
+    lambda: |-
+      it.print(0, 0, id(my_font), "Hello!");`
+            },
+            // Additional Outputs
+            'output.servo': {
+                name: 'Servo Motor',
+                category: 'output',
+                params: [
+                    { name: 'name', label: 'Name', default: 'Servo' },
+                    { name: 'pin', label: 'GPIO Pin', default: 'GPIO18' },
+                    { name: 'min', label: 'Min Pulse', default: '1000' },
+                    { name: 'max', label: 'Max Pulse', default: '2000' }
+                ],
+                template: `output:
+  - platform: ledc
+    pin: {{pin}}
+    frequency: 50Hz
+    id: servo_pwm
+
+servo:
+  - id: my_servo
+    output: servo_pwm
+    min_pulse_width: {{min}}us
+    max_pulse_width: {{max}}us`
+            },
+            'output.pwm': {
+                name: 'PWM Output',
+                category: 'output',
+                params: [
+                    { name: 'name', label: 'Name', default: 'PWM' },
+                    { name: 'pin', label: 'GPIO Pin', default: 'GPIO18' },
+                    { name: 'frequency', label: 'Frequency', default: '1000' }
+                ],
+                template: `output:
+  - platform: ledc
+    pin: {{pin}}
+    frequency: {{frequency}}Hz
+    id: pwm_output`
+            },
+            // Additional Lights
+            'light.wrgb': {
+                name: 'RGBW Light',
+                category: 'light',
+                params: [
+                    { name: 'name', label: 'Name', default: 'RGBW Light' },
+                    { name: 'red_pin', label: 'Red Pin', default: 'GPIO4' },
+                    { name: 'green_pin', label: 'Green Pin', default: 'GPIO12' },
+                    { name: 'blue_pin', label: 'Blue Pin', default: 'GPIO14' },
+                    { name: 'white_pin', label: 'White Pin', default: 'GPIO5' }
+                ],
+                template: `output:
+  - platform: ledc
+    pin: {{red_pin}}
+    id: red_pwm
+  - platform: ledc
+    pin: {{green_pin}}
+    id: green_pwm
+  - platform: ledc
+    pin: {{blue_pin}}
+    id: blue_pwm
+  - platform: ledc
+    pin: {{white_pin}}
+    id: white_pwm
+
+light:
+  - platform: rgbw
+    name: "{{name}}"
+    red: red_pwm
+    green: green_pwm
+    blue: blue_pwm
+    white: white_pwm`
+            },
+            'light.cct': {
+                name: 'CCT Light (Warm/Cold)',
+                category: 'light',
+                params: [
+                    { name: 'name', label: 'Name', default: 'CCT Light' },
+                    { name: 'warm_pin', label: 'Warm Pin', default: 'GPIO4' },
+                    { name: 'cold_pin', label: 'Cold Pin', default: 'GPIO5' }
+                ],
+                template: `output:
+  - platform: ledc
+    pin: {{warm_pin}}
+    id: warm_pwm
+  - platform: ledc
+    pin: {{cold_pin}}
+    id: cold_pwm
+
+light:
+  - platform: cct
+    name: "{{name}}"
+    warm_white: warm_pwm
+    cold_white: cold_pwm`
+            },
+            // Additional Climate
+            'climate.thermostat': {
+                name: 'Thermostat Climate',
+                category: 'climate',
+                params: [
+                    { name: 'name', label: 'Name', default: 'Thermostat' },
+                    { name: 'temp_sensor', label: 'Temp Sensor ID', default: 'temp_sensor' },
+                    { name: 'heater_switch', label: 'Heater Switch ID', default: 'heater' }
+                ],
+                template: `climate:
+  - platform: thermostat
+    name: "{{name}}"
+    sensor: {{temp_sensor}}
+    default_preset: Home
+    visual:
+      min_temperature: 15
+      max_temperature: 28
+      temperature_step: 0.5
+    preset:
+      - name: Home
+        default_target_temperature_low: 20
+      - name: Away
+        default_target_temperature_low: 16
+    heat_action:
+      - switch.turn_on: {{heater_switch}}`
+            },
+            // Additional Covers
+            'cover.time_based': {
+                name: 'Time-Based Cover',
+                category: 'cover',
+                params: [
+                    { name: 'name', label: 'Name', default: 'Blind' },
+                    { name: 'open_pin', label: 'Open Pin', default: 'GPIO5' },
+                    { name: 'close_pin', label: 'Close Pin', default: 'GPIO4' },
+                    { name: 'open_time', label: 'Open Time', default: '25s' },
+                    { name: 'close_time', label: 'Close Time', default: '23s' }
+                ],
+                template: `cover:
+  - platform: time_based
+    name: "{{name}}"
+    open_action:
+      - switch.turn_on: open_relay
+    close_action:
+      - switch.turn_on: close_relay
+    open_duration: {{open_time}}
+    close_duration: {{close_time}}
+
+switch:
+  - platform: gpio
+    pin: {{open_pin}}
+    id: open_relay
+  - platform: gpio
+    pin: {{close_pin}}
+    id: close_relay`
+            },
+            // Additional Network
+            'network.ethernet': {
+                name: 'Ethernet (LAN8720)',
+                category: 'network',
+                params: [
+                    { name: 'name', label: 'Name', default: 'Ethernet' }
+                ],
+                template: `ethernet:
+  type: LAN8720
+  mdc_pin: GPIO23
+  mdio_pin: GPIO18
+  clk_mode: GPIO17
+  phy_addr: 1
+  power_pin: GPIO12`
+            },
+            'network.mqtt': {
+                name: 'MQTT Client',
+                category: 'network',
+                params: [
+                    { name: 'broker', label: 'Broker', default: '192.168.1.43' },
+                    { name: 'port', label: 'Port', default: '1883' },
+                    { name: 'user', label: 'Username', default: 'mqtt' },
+                    { name: 'pass', label: 'Password', default: 'password' }
+                ],
+                template: `mqtt:
+  broker: {{broker}}
+  port: {{port}}
+  username: {{user}}
+  password: {{pass}}
+  discovery: true
+  discovery_retain: true`
             },
             // I2C Components
             'i2c.base': {
@@ -4600,6 +5664,239 @@ display:
             document.getElementById('new-device-modal').classList.remove('active');
         }
         
+        function updateFrameworkInfo() {
+            const framework = document.getElementById('new-device-framework').value;
+            const infoEl = document.getElementById('framework-info');
+            
+            if (framework === 'arduino') {
+                infoEl.textContent = 'Arduino: Easier setup, larger community support. Recommended for beginners.';
+            } else if (framework === 'esp-idf') {
+                infoEl.textContent = 'ESP-IDF: Better performance, more features, lower power consumption. Requires more experience.';
+            }
+        }
+        
+        // Component templates for quick insertion
+        const COMPONENT_TEMPLATES = {
+            'sensor': `  - platform: dht
+    pin: GPIOXX
+    temperature:
+      name: "Temperature"
+    humidity:
+      name: "Humidity"
+    update_interval: 60s`,
+            'binary_sensor': `  - platform: gpio
+    pin:
+      number: GPIOXX
+      mode: INPUT_PULLUP
+    name: "Binary Sensor"
+    filters:
+      - delayed_on: 10ms
+      - delayed_off: 10ms`,
+            'switch': `  - platform: gpio
+    pin: GPIOXX
+    name: "Switch"
+    id: switch_1
+    restore_mode: ALWAYS_OFF`,
+            'light': `  - platform: monochromatic
+    name: "Light"
+    output: light_output
+    id: light_1`,
+            'output': `  - platform: esp8266_pwm
+    pin: GPIOXX
+    frequency: 1000 Hz
+    id: light_output`
+        };
+        
+        function insertComponentTemplate(templateName) {
+            console.log('Insert template:', templateName);
+            
+            const yamlContent = COMPONENT_TEMPLATES[templateName];
+            if (!yamlContent) {
+                console.error('Template not found:', templateName);
+                showToast('error', 'Error', 'Template not found: ' + templateName);
+                return;
+            }
+            
+            console.log('Template content:', yamlContent.substring(0, 50));
+            
+            // Get the YAML content
+            let currentYaml = '';
+            let editor = null;
+            
+            // Check if Monaco editor is initialized
+            if (typeof monaco !== 'undefined' && window.monacoEditor) {
+                console.log('Using Monaco Editor');
+                editor = window.monacoEditor;
+                currentYaml = editor.getValue();
+            } else {
+                console.log('Using textarea');
+                // Use textarea
+                const textarea = document.getElementById('yaml-content');
+                if (!textarea) {
+                    console.error('YAML editor not found');
+                    showToast('error', 'Error', 'YAML editor not initialized');
+                    return;
+                }
+                currentYaml = textarea.value;
+            }
+            
+            console.log('Current YAML length:', currentYaml.length);
+            
+            // Find the appropriate section to insert
+            let insertSection = templateName === 'output' ? 'output:' : templateName + ':';
+            let newYaml = currentYaml;
+            
+            // Check if section exists
+            if (currentYaml.includes(insertSection)) {
+                console.log('Section exists:', insertSection);
+                // Insert after the existing section content
+                const lines = currentYaml.split('\n');
+                let insertIndex = -1;
+                let foundSection = false;
+                let indent = 0;
+                
+                for (let i = 0; i < lines.length; i++) {
+                    if (lines[i].trim() === insertSection) {
+                        foundSection = true;
+                        indent = lines[i].indexOf(insertSection);
+                    }
+                    if (foundSection && lines[i].trim() && !lines[i].startsWith(' ') && lines[i].includes(':') && lines[i] !== insertSection) {
+                        insertIndex = i;
+                        break;
+                    }
+                }
+                
+                if (insertIndex > 0) {
+                    // Insert before next section
+                    newYaml = lines.slice(0, insertIndex).join('\n') + '\n' + yamlContent + '\n' + lines.slice(insertIndex).join('\n');
+                } else {
+                    // Insert at end
+                    newYaml = currentYaml + '\n' + yamlContent;
+                }
+            } else {
+                console.log('Section not found, adding:', insertSection);
+                // Add section and insert
+                newYaml = currentYaml + '\n\n' + insertSection + '\n' + yamlContent;
+            }
+            
+            // Update editor
+            if (editor) {
+                editor.setValue(newYaml);
+                console.log('Monaco Editor updated');
+            } else {
+                document.getElementById('yaml-content').value = newYaml;
+                console.log('Textarea updated');
+            }
+            
+            // Show toast
+            showToast('success', 'Template Inserted', `Added ${templateName} template to YAML`);
+        }
+        
+        // Export to global scope for onclick handlers
+        window.insertComponentTemplate = insertComponentTemplate;
+        
+        // Chip Visualization Modal
+        function showChipVizModal() {
+            const modal = document.getElementById('chip-viz-modal');
+            if (!modal) return;
+            
+            modal.classList.add('active');
+            
+            // Get stored data
+            const data = window._chipVizData;
+            if (!data) {
+                console.error('No chip viz data');
+                return;
+            }
+            
+            // Update device info
+            document.getElementById('chip-viz-device-name').textContent = data.deviceName;
+            document.getElementById('chip-viz-platform').textContent = data.platform;
+            document.getElementById('chip-viz-board').textContent = data.board || '-';
+            
+            // Render chip visualization
+            if (typeof renderSpiderVisualization === 'function' && data.yamlContent) {
+                const chipViz = renderSpiderVisualization(data.deviceName, data.platform, data.board, data.yamlContent);
+                const diagram = document.getElementById('chip-viz-diagram');
+                if (diagram && chipViz) {
+                    diagram.innerHTML = '';
+                    diagram.appendChild(chipViz);
+                }
+                
+                // Update statistics
+                if (typeof parsePinsFromYaml === 'function') {
+                    const usedPins = parsePinsFromYaml(data.yamlContent);
+                    const peripherals = parsePeripheralsFromYaml(data.yamlContent);
+                    
+                    // Count used pins
+                    let usedCount = 0;
+                    Object.values(usedPins).forEach(pins => {
+                        usedCount += pins.length;
+                    });
+                    
+                    // Get total pins from board
+                    const boardPins = window.BOARD_PINS?.[data.board] || window.BOARD_PINS?.['esp32dev'];
+                    const totalPins = boardPins ? boardPins.leftPins.length + boardPins.rightPins.length : 30;
+                    
+                    document.getElementById('chip-viz-total-pins').textContent = totalPins;
+                    document.getElementById('chip-viz-used-pins').textContent = usedCount;
+                    document.getElementById('chip-viz-free-pins').textContent = totalPins - usedCount;
+                    document.getElementById('chip-viz-peripherals').textContent = peripherals.length;
+                    
+                    // Render peripherals list with power info
+                    const peripheralsList = document.getElementById('chip-viz-peripherals-list');
+                    if (peripheralsList && peripherals.length > 0) {
+                        peripheralsList.innerHTML = peripherals.map(p => {
+                            const pType = window.PERIPHERAL_TYPES?.[p.type] || { name: p.type, type: 'sensor', icon: 'memory' };
+                            const reqs = window.PERIPHERAL_REQUIREMENTS?.[p.type] || {};
+                            const hasPower = reqs.power;
+                            const powerClass = hasPower ? (reqs.power.includes('5V') ? 'power-5v' : 'power-3v3') : '';
+                            
+                            return `
+                                <div class="peripheral-item ${pType.type}" style="background: var(--bg); border-radius: 8px; padding: 12px; border: 1px solid var(--border); margin-bottom: 8px;">
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                                        <span class="material-icons" style="font-size: 18px; color: var(--primary);">${pType.icon}</span>
+                                        <strong style="font-size: 14px;">${p.name}</strong>
+                                        <span style="font-size: 11px; background: var(--primary); color: white; padding: 2px 6px; border-radius: 4px; margin-left: auto;">${pType.type}</span>
+                                    </div>
+                                    <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px;">
+                                        ${p.pins.map(pin => `<span style="font-size: 11px; background: rgba(74,144,217,0.1); padding: 2px 6px; border-radius: 4px;"><strong>${pin.name}:</strong> ${pin.pin}</span>`).join('')}
+                                    </div>
+                                    ${hasPower ? `
+                                        <div style="display: flex; flex-wrap: wrap; gap: 8px; padding-top: 8px; border-top: 1px solid var(--border);">
+                                            <div style="display: flex; align-items: center; gap: 4px;">
+                                                <span class="material-icons" style="font-size: 14px; color: ${reqs.power.includes('5V') ? '#ff9800' : '#4caf50'};">power</span>
+                                                <span style="font-size: 11px; color: var(--text-secondary);">Táp: <strong style="color: var(--text-primary);">${reqs.power}</strong></span>
+                                            </div>
+                                            <div style="display: flex; align-items: center; gap: 4px;">
+                                                <span class="material-icons" style="font-size: 14px; color: #2196f3;">bolt</span>
+                                                <span style="font-size: 11px; color: var(--text-secondary);">Áram: <strong style="color: var(--text-primary);">${reqs.current}</strong></span>
+                                            </div>
+                                            ${reqs.notes ? `
+                                                <div style="display: flex; align-items: center; gap: 4px; flex-basis: 100%;">
+                                                    <span class="material-icons" style="font-size: 14px; color: #9c27b0;">info</span>
+                                                    <span style="font-size: 11px; color: var(--text-secondary);">${reqs.notes}</span>
+                                                </div>
+                                            ` : ''}
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            `;
+                        }).join('');
+                    } else {
+                        peripheralsList.innerHTML = '<div style="color: var(--text-secondary); text-align: center; padding: 16px; grid-column: 1/-1;">No peripherals detected in YAML</div>';
+                    }
+                }
+            }
+        }
+        
+        function closeChipVizModal() {
+            const modal = document.getElementById('chip-viz-modal');
+            if (modal) {
+                modal.classList.remove('active');
+            }
+        }
+        
         // New Device Tab Switching
         function switchNewDeviceTab(tab) {
             const createContent = document.getElementById('new-device-create-content');
@@ -4806,7 +6103,183 @@ display:
         function closeSecretsModal() {
             document.getElementById('secrets-modal').classList.remove('active');
         }
-
+        
+        // Compare Modal Functions
+        async function showCompareModal(deviceName) {
+            // Show modal immediately
+            document.getElementById('compare-modal').classList.add('active');
+            
+            // Populate device dropdowns
+            const select1 = document.getElementById('compare-device-1');
+            const select2 = document.getElementById('compare-device-2');
+            
+            // Clear existing options
+            select1.innerHTML = '<option value="">Loading devices...</option>';
+            select2.innerHTML = '<option value="">Loading devices...</option>';
+            
+            try {
+                // Fetch devices from API
+                const response = await fetch(`${API_BASE}/api/devices`);
+                const data = await response.json();
+                
+                if (data.success && data.devices) {
+                    // Clear and populate dropdowns
+                    select1.innerHTML = '<option value="">Select device...</option>';
+                    select2.innerHTML = '<option value="">Select device...</option>';
+                    
+                    data.devices.forEach(function(device) {
+                        const name = device.name || device;
+                        select1.innerHTML += '<option value="' + name + '">' + name + '</option>';
+                        select2.innerHTML += '<option value="' + name + '">' + name + '</option>';
+                    });
+                    
+                    // Pre-select the clicked device
+                    if (deviceName) {
+                        select1.value = deviceName;
+                        loadCompareYaml(1);
+                    }
+                } else {
+                    select1.innerHTML = '<option value="">Error loading devices</option>';
+                    select2.innerHTML = '<option value="">Error loading devices</option>';
+                }
+            } catch (e) {
+                console.error('Failed to load devices for compare:', e);
+                select1.innerHTML = '<option value="">Error: ' + e.message + '</option>';
+                select2.innerHTML = '<option value="">Error: ' + e.message + '</option>';
+            }
+        }
+        
+        function closeCompareModal() {
+            document.getElementById('compare-modal').classList.remove('active');
+        }
+        
+        async function loadCompareYaml(side) {
+            const selectId = side === 1 ? 'compare-device-1' : 'compare-device-2';
+            const yamlId = side === 1 ? 'compare-yaml-1' : 'compare-yaml-2';
+            const titleId = side === 1 ? 'compare-title-1' : 'compare-title-2';
+            
+            const deviceName = document.getElementById(selectId).value;
+            const yamlEl = document.getElementById(yamlId);
+            const titleEl = document.getElementById(titleId);
+            
+            if (!deviceName) {
+                yamlEl.textContent = '';
+                titleEl.textContent = side === 1 ? 'Device 1' : 'Device 2';
+                return;
+            }
+            
+            titleEl.textContent = deviceName;
+            yamlEl.textContent = 'Loading...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/yaml/${deviceName}`);
+                const data = await response.json();
+                
+                if (data.success && data.yaml) {
+                    yamlEl.textContent = data.yaml;
+                } else {
+                    yamlEl.textContent = 'Error loading YAML';
+                }
+                
+                // Update diff if both sides are loaded
+                updateCompareDiff();
+            } catch (e) {
+                yamlEl.textContent = 'Error: ' + e.message;
+            }
+        }
+        
+        function updateCompareDiff() {
+            const yaml1 = document.getElementById('compare-yaml-1').textContent;
+            const yaml2 = document.getElementById('compare-yaml-2').textContent;
+            const diffEl = document.getElementById('compare-diff-content');
+            
+            if (!yaml1 || !yaml2 || yaml1 === 'Loading...' || yaml2 === 'Loading...') {
+                return;
+            }
+            
+            const lines1 = yaml1.split('\n');
+            const lines2 = yaml2.split('\n');
+            
+            // Find unique lines for better diff
+            const set1 = new Set(lines1);
+            const set2 = new Set(lines2);
+            const unique1 = [...set1].filter(l => !set2.has(l));
+            const unique2 = [...set2].filter(l => !set1.has(l));
+            
+            const maxLines = Math.max(lines1.length, lines2.length);
+            let diffHtml = '<table style="width: 100%; border-collapse: collapse; font-family: Roboto Mono, monospace;">';
+            diffHtml += '<thead><tr style="background: var(--card-bg);">';
+            diffHtml += '<th style="width: 3%; padding: 6px; text-align: center; color: var(--text-secondary);">#</th>';
+            diffHtml += '<th style="width: 48%; padding: 6px; color: var(--primary);">Device 1</th>';
+            diffHtml += '<th style="width: 48%; padding: 6px; color: var(--primary);">Device 2</th>';
+            diffHtml += '</tr></thead><tbody>';
+            
+            let diffCount = 0;
+            
+            for (let i = 0; i < maxLines; i++) {
+                const line1 = lines1[i] || '';
+                const line2 = lines2[i] || '';
+                const isDifferent = line1 !== line2;
+                
+                if (isDifferent) {
+                    diffCount++;
+                    const in1Only = unique1.includes(line1) && line1;
+                    const in2Only = unique2.includes(line2) && line2;
+                    
+                    let rowStyle = 'background: rgba(255, 152, 0, 0.08);';
+                    let cell1Style = '';
+                    let cell2Style = '';
+                    
+                    if (in1Only && !in2Only) {
+                        // Only in device 1 (removed)
+                        rowStyle = 'background: rgba(244, 67, 54, 0.1);';
+                        cell1Style = 'color: var(--error); text-decoration: line-through;';
+                    } else if (in2Only && !in1Only) {
+                        // Only in device 2 (added)
+                        rowStyle = 'background: rgba(76, 175, 80, 0.1);';
+                        cell2Style = 'color: var(--success); font-weight: 500;';
+                    } else {
+                        // Modified
+                        rowStyle = 'background: rgba(255, 152, 0, 0.1);';
+                        cell1Style = 'color: var(--warning);';
+                        cell2Style = 'color: var(--warning);';
+                    }
+                    
+                    diffHtml += '<tr style="' + rowStyle + '">';
+                    diffHtml += '<td style="padding: 4px 8px; text-align: center; color: var(--text-secondary); font-size: 11px;">' + (i + 1) + '</td>';
+                    diffHtml += '<td style="padding: 4px 8px; white-space: pre; font-size: 12px; ' + cell1Style + '">' + escapeHtml(line1 || ' ') + '</td>';
+                    diffHtml += '<td style="padding: 4px 8px; white-space: pre; font-size: 12px; ' + cell2Style + '">' + escapeHtml(line2 || ' ') + '</td>';
+                    diffHtml += '</tr>';
+                }
+            }
+            
+            diffHtml += '</tbody></table>';
+            
+            // Summary with legend
+            let summaryHtml = '<div style="margin-bottom: 12px; display: flex; gap: 16px; flex-wrap: wrap; align-items: center;">';
+            summaryHtml += '<strong style="font-size: 14px;">' + diffCount + ' differences</strong>';
+            summaryHtml += '<span style="display: inline-flex; align-items: center; gap: 4px; font-size: 11px;">';
+            summaryHtml += '<span style="width: 12px; height: 12px; background: rgba(76, 175, 80, 0.3); border-radius: 2px;"></span> Added';
+            summaryHtml += '</span>';
+            summaryHtml += '<span style="display: inline-flex; align-items: center; gap: 4px; font-size: 11px;">';
+            summaryHtml += '<span style="width: 12px; height: 12px; background: rgba(244, 67, 54, 0.3); border-radius: 2px;"></span> Removed';
+            summaryHtml += '</span>';
+            summaryHtml += '<span style="display: inline-flex; align-items: center; gap: 4px; font-size: 11px;">';
+            summaryHtml += '<span style="width: 12px; height: 12px; background: rgba(255, 152, 0, 0.3); border-radius: 2px;"></span> Modified';
+            summaryHtml += '</span>';
+            summaryHtml += '</div>';
+            
+            diffEl.innerHTML = diffCount > 0 ? 
+                summaryHtml + diffHtml :
+                '<div style="text-align: center; padding: 20px; color: var(--success);"><span class="material-icons" style="font-size: 32px; vertical-align: middle;">check_circle</span> Files are identical</div>';
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
         async function loadSecrets() {
             const statusEl = document.getElementById('secrets-status');
             statusEl.innerHTML = '<span style="color: var(--warning);">Loading secrets...</span>';
@@ -4915,12 +6388,13 @@ display:
         async function createNewDevice() {
             const name = document.getElementById('new-device-name').value.trim();
             if (!name) {
-                alert('Please enter a device name');
+                showToast('error', 'Name Required', 'Please enter a device name');
                 return;
             }
             
             const platform = document.getElementById('new-device-platform').value;
             const board = document.getElementById('new-device-board').value;
+            const framework = document.getElementById('new-device-framework').value;
             const includeWifi = document.getElementById('new-device-wifi').checked;
             const includeApi = document.getElementById('new-device-api').checked;
             const includeOta = document.getElementById('new-device-ota').checked;
@@ -4931,34 +6405,24 @@ display:
 
 `;
             
-            // Add platform
-            if (platform === 'esp32-s3') {
+            // Add platform and framework
+            if (platform === 'ESP32' || platform === 'ESP32-S2' || platform === 'ESP32-S3' || platform === 'ESP32-C3' || platform === 'ESP32-C6' || platform === 'ESP32-H2' || platform === 'ESP32-P4') {
                 yaml += `esp32:
   board: ${board}
   framework:
-    type: esp-idf
-    version: recommended
-
+    type: ${framework}
+${framework === 'esp-idf' ? '    version: recommended\n' : ''}
 `;
-            } else if (platform === 'esp32-c3') {
-                yaml += `esp32:
-  board: ${board}
-  framework:
-    type: esp-idf
-
-`;
-            } else if (platform === 'esp32') {
-                yaml += `esp32:
-  board: ${board}
-  framework:
-    type: arduino
-
-`;
-            } else {
+            } else if (platform === 'ESP8266') {
                 yaml += `esp8266:
   board: ${board}
   framework:
-    type: arduino
+    type: ${framework === 'esp-idf' ? 'arduino' : framework}
+
+`;
+            } else if (platform === 'RP2040') {
+                yaml += `rp2040:
+  board: ${board}
 
 `;
             }
@@ -4990,14 +6454,33 @@ display:
   level: DEBUG
 `;
             
-            // Set the YAML content
-            document.getElementById('yaml-content').value = yaml;
-            document.getElementById('yaml-device-select').value = '';
+            // Set the YAML content in editor
+            if (typeof setEditorContent === 'function' && editor) {
+                setEditorContent(yaml);
+            } else {
+                document.getElementById('yaml-content').value = yaml;
+            }
+            
+            // Set the device name in select (for saving)
+            document.getElementById('yaml-device-select').value = name;
+            document.getElementById('yaml-device-select').innerHTML = `<option value="${name}" selected>${name} (new)</option>`;
+            
+            // Store as pending new device
+            window._pendingNewDevice = name;
+            window._pendingYaml = yaml;
             
             closeNewDeviceModal();
             
             // Show success message
-            addLog(name, 'info', 'New device configuration created. Don\'t forget to save!');
+            showToast('success', 'Device Created', `New device "${name}" ready. Click Save to store it.`);
+            addLog(name, 'info', 'New device configuration created. Click Save to store it.');
+            
+            // Enable save button
+            const saveBtn = document.querySelector('button[onclick="saveYaml()"]');
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.classList.remove('btn-disabled');
+            }
         }
         
         async function testMQTTConnection() {
@@ -5199,9 +6682,10 @@ display:
         });
     </script>
     <!-- Monaco Editor -->
-    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
-    <script src="/static/js/editor.js"></script>
-    <script src="/static/js/chip-viz.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.50.0/min/vs/loader.js"></script>
+    <script src="/static/js/editor.js?v=202603281219"></script>
+    <script src="/static/js/chip-viz.js?v=202603281219"></script>
+    <script src="/static/js/chip-viz-spider.js?v=202603281349"></script>
     <script>
         // Initialize Monaco Editor immediately after script load
         (function() {

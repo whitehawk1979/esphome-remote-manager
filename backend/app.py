@@ -12,6 +12,7 @@ import subprocess
 import logging
 import threading
 import queue
+import yaml
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 from fastapi import FastAPI, HTTPException, BackgroundTasks, WebSocket, WebSocketDisconnect, Request
@@ -610,6 +611,19 @@ async def health():
         
         state["esphome_version"] = esphome_version
         
+        # Load secrets for display
+        secrets_data = await load_secrets_async()
+        
+        # Get relevant secret values
+        wifi_ssid = secrets_data.get("wifi_ssid", "")
+        wifi_password = secrets_data.get("wifi_password", "")
+        web_password = secrets_data.get("web_password", "")
+        api_encryption_key = secrets_data.get("api_encryption_key", "")
+        
+        # Use web_password as fallback for api/ota password if not explicitly defined
+        api_password = secrets_data.get("api_password", web_password)
+        ota_password = secrets_data.get("ota_password", web_password)
+        
         # Update MQTT state
         if ENABLE_MQTT_DISCOVERY:
             publish_mqtt(f"{DEVICE_ID}/status", "healthy")
@@ -631,7 +645,13 @@ async def health():
             "ha_url": HA_URL,
             "ha_mcp_url": HA_MCP_URL,
             "device_id": DEVICE_ID,
-            "mqtt_discovery_enabled": ENABLE_MQTT_DISCOVERY
+            "mqtt_discovery_enabled": ENABLE_MQTT_DISCOVERY,
+            # Secrets info (for settings display)
+            "wifi_ssid": wifi_ssid,
+            "wifi_password": wifi_password,
+            "api_password": api_password,
+            "ota_password": ota_password,
+            "api_encryption_key": api_encryption_key[:20] + "..." if len(api_encryption_key) > 20 else api_encryption_key
         }
     except Exception as e:
         logger.error(f"Health check failed: {e}")
@@ -650,8 +670,45 @@ async def health():
             "ha_url": HA_URL,
             "ha_mcp_url": HA_MCP_URL,
             "device_id": DEVICE_ID,
-            "mqtt_discovery_enabled": ENABLE_MQTT_DISCOVERY
+            "mqtt_discovery_enabled": ENABLE_MQTT_DISCOVERY,
+            # Secrets info (empty on error)
+            "wifi_ssid": "",
+            "wifi_password": "",
+            "api_password": "",
+            "ota_password": "",
+            "api_encryption_key": ""
         }
+
+
+async def load_secrets_async():
+    """Load secrets.yaml content asynchronously"""
+    try:
+        secrets_path = "/opt/esphome/secrets.yaml"
+        
+        # Try primary location first
+        result = subprocess.run(
+            ["docker", "exec", "esphome", "cat", secrets_path],
+            capture_output=True, text=True, timeout=5
+        )
+        
+        if result.returncode == 0:
+            secrets = yaml.safe_load(result.stdout) or {}
+            return secrets
+        
+        # Try alternate location
+        result = subprocess.run(
+            ["docker", "exec", "esphome", "cat", "/config/secrets.yaml"],
+            capture_output=True, text=True, timeout=5
+        )
+        
+        if result.returncode == 0:
+            secrets = yaml.safe_load(result.stdout) or {}
+            return secrets
+        
+        return {}
+    except Exception as e:
+        logger.error(f"Failed to load secrets: {e}")
+        return {}
 
 
 async def call_esphome_api(endpoint: str, method: str = "GET", data: Optional[dict] = None) -> Dict[str, Any]:
@@ -749,62 +806,17 @@ async def list_devices():
         elif platform and platform.upper() == "HOST":
             device["platform"] = "HOST"
     
-    # Fetch HA devices in background (don't block main response)
-    ha_devices_map = {}
-    try:
-        # Use longer timeout for HA devices (MCP can be slow)
-        try:
-            ha_devices = await asyncio.wait_for(get_ha_devices(), timeout=120)
-        except asyncio.TimeoutError:
-            logger.warning("HA devices fetch timed out after 120s, returning devices without HA data")
-            ha_devices = {}
-        if ha_devices.get("success") and ha_devices.get("devices"):
-            for ha_device in ha_devices["devices"]:
-                # Map by name (try both - and _)
-                ha_devices_map[ha_device["name"]] = ha_device
-                ha_devices_map[ha_device["name"].replace("-", "_")] = ha_device
-                ha_devices_map[ha_device["name"].replace("_", "-")] = ha_device
-    except asyncio.TimeoutError:
-        logger.warning("HA devices fetch timed out, returning devices without HA data")
-    except Exception as e:
-        logger.error(f"Failed to fetch HA devices: {e}")
-    
-    # Merge HA data with devices and fetch platform/board from YAML
+    # FAST PATH: Return devices immediately without waiting for HA data
+    # HA data will be fetched separately via /api/device/{name} when needed
     for device in devices:
-        device_name = device["name"]
-        
-        # Try different name formats: exact, with underscores, partial
-        ha_device = (ha_devices_map.get(device_name) or 
-                     ha_devices_map.get(device_name.replace("-", "_")) or 
-                     ha_devices_map.get(device_name.replace("_", "-")))
-        
-        # Try partial match for complex names like "esp32-s3-box-3-esp32s3box-bla" -> "esp32_s3_box_3"
-        if not ha_device:
-            for ha_name in ha_devices_map:
-                # Check if HA device name is contained in device name (normalized)
-                normalized_device = device_name.replace("-", "_").replace(" ", "_")
-                normalized_ha = ha_name.replace("-", "_").replace(" ", "_")
-                if normalized_ha in normalized_device or normalized_device in normalized_ha:
-                    ha_device = ha_devices_map[ha_name]
-                    break
-        
-        if ha_device:
-            device["ha_online"] = ha_device.get("online", False)
-            device["ha_entities"] = ha_device.get("entities", [])
-            device["ha_firmware"] = ha_device.get("firmware_version")
-            device["ha_ip"] = ha_device.get("ip_address")
-            # Override status if online in HA
-            if ha_device.get("online"):
-                device["status"] = "online"
-        else:
-            device["ha_online"] = None
-            device["ha_entities"] = []
-            device["ha_firmware"] = None
-            device["ha_ip"] = None
+        device["ha_online"] = None
+        device["ha_entities"] = []
+        device["ha_firmware"] = None
+        device["ha_ip"] = None
         
         # Fetch platform and board from YAML (always try to get board)
         try:
-            yaml_response = await get_yaml_config(device_name)
+            yaml_response = await get_yaml_config(device["name"])
             if yaml_response.get("success") and yaml_response.get("yaml"):
                 yaml_content = yaml_response["yaml"]
                 import re
@@ -831,7 +843,7 @@ async def list_devices():
                     device["board"] = board_match.group(1).strip()
                     
         except Exception as e:
-            logger.debug(f"Failed to parse YAML for {device_name}: {e}")
+            logger.debug(f"Failed to parse YAML for {device['name']}: {e}")
     
     # Update MQTT device count
     if ENABLE_MQTT_DISCOVERY:
@@ -856,50 +868,68 @@ async def get_device(device_name: str):
     
     for device in devices:
         if device["name"] == device_name:
-            # Get HA entities from state
-            ha_entities = []
-            for entity in state.get("ha_entities", []):
-                if entity.get("device", "").lower() == device_name.lower():
-                    ha_entities.append(entity)
+            # Get YAML config to extract platform and board
+            platform = device.get("platform", "Unknown")
+            board = device.get("board", "-")
+            yaml_content = None
             
-            # Try to fetch HA entities via MCP if available
             try:
-                ha_entities = await fetch_ha_entities_for_device(device_name, device.get("integrations", []))
-            except Exception as e:
-                logger.error(f"Failed to fetch HA entities: {e}")
-            
-            # Parse YAML to extract platform and board
-            platform = None
-            board = None
-            try:
-                # Use the existing YAML endpoint
                 yaml_response = await get_yaml_config(device_name)
                 if yaml_response.get("success") and yaml_response.get("yaml"):
                     yaml_content = yaml_response["yaml"]
-                    logger.info(f"YAML content for {device_name}: {yaml_content[:200]}")
-                    # Extract platform (esp32, esp8266, rp2040, host)
+                    
+                    # Extract platform from YAML (esp32, esp32-s3, esp8266, rp2040, host)
                     import re
-                    platform_match = re.search(r'^(esp32|esp8266|rp2040|host):', yaml_content, re.MULTILINE)
+                    
+                    # Platform detection
+                    platform_match = re.search(r'^(esp32(?:-s[23]|-c[36]|-h[24]|-p4)?|esp8266|rp2040|host):\s*$', yaml_content, re.MULTILINE | re.IGNORECASE)
                     if platform_match:
-                        platform = platform_match.group(1).upper()
-                        logger.info(f"Detected platform: {platform}")
-                    # Extract board - can be indented under platform
-                    board_match = re.search(r'board:\s*([^\n]+)', yaml_content)
+                        platform_raw = platform_match.group(1).lower()
+                        if platform_raw.startswith("esp32-s3"):
+                            platform = "ESP32-S3"
+                        elif platform_raw.startswith("esp32-s2"):
+                            platform = "ESP32-S2"
+                        elif platform_raw.startswith("esp32-c3"):
+                            platform = "ESP32-C3"
+                        elif platform_raw.startswith("esp32"):
+                            platform = "ESP32"
+                        elif platform_raw == "esp8266":
+                            platform = "ESP8266"
+                        elif platform_raw == "rp2040":
+                            platform = "RP2040"
+                        elif platform_raw == "host":
+                            platform = "HOST"
+                    
+                    # Board detection
+                    board_match = re.search(r'board:\s*([^\n\r]+)', yaml_content)
                     if board_match:
                         board = board_match.group(1).strip()
-                        logger.info(f"Detected board: {board}")
-                else:
-                    logger.warning(f"YAML fetch failed: {yaml_response.get('error', 'Unknown error')}")
+                        # If board contains S3/C3/S2, update platform
+                        board_lower = board.lower()
+                        if 's3' in board_lower or '-s3' in board_lower:
+                            platform = "ESP32-S3"
+                        elif 's2' in board_lower or '-s2' in board_lower:
+                            platform = "ESP32-S2"
+                        elif 'c3' in board_lower or '-c3' in board_lower:
+                            platform = "ESP32-C3"
+                        elif 'c6' in board_lower or '-c6' in board_lower:
+                            platform = "ESP32-C6"
+                        elif 'h2' in board_lower or '-h2' in board_lower:
+                            platform = "ESP32-H2"
+                        elif 'h4' in board_lower or '-h4' in board_lower:
+                            platform = "ESP32-H4"
+                        
             except Exception as e:
-                logger.error(f"Failed to parse YAML for platform/board: {e}", exc_info=True)
+                logger.debug(f"Failed to parse YAML for {device_name}: {e}")
             
             return {
                 "success": True,
                 "device": {
                     **device,
-                    "platform": platform or device.get("platform"),
-                    "board": board or device.get("board"),
-                    "ha_entities": ha_entities
+                    "platform": platform,
+                    "board": board,
+                    "yaml": yaml_content,
+                    "ha_entities": []  # Fast return, HA entities loaded separately
                 }
             }
     
