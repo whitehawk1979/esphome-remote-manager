@@ -13,17 +13,18 @@
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <!-- Monaco Editor -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/monaco-editor@0.50.0/min/vs/editor/editor.main.css">
-    <!-- Version: 202603271930 -->
-    <link rel="stylesheet" href="/static/css/chip.css?v=202603281210">
-    <link rel="stylesheet" href="/static/css/chip-viz.css?v=202603281210">
+    <!-- Version: 202603291020 -->
+    <link rel="stylesheet" href="/static/css/chip.css?v=202603291020">
+    <link rel="stylesheet" href="/static/css/chip-viz.css?v=202603291020">
     <style>
         :root {
-            --primary: #03a9f4;
-            --primary-dark: #0288d1;
+            --primary: #2196f3;
+            --primary-dark: #1976d2;
+            --primary-rgb: 33, 150, 243;
             --secondary: #607d8b;
-            --success: #4caf50;
-            --warning: #ff9800;
-            --error: #f44336;
+            --success: #388e3c;
+            --warning: #f57c00;
+            --error: #d32f2f;
             --bg: #eceff1;
             --card-bg: #ffffff;
             --text: #263238;
@@ -339,8 +340,8 @@
         .btn-success { background: var(--success); color: white; }
         .btn-success:hover { background: #43a047; }
         
-        .btn-warning { background: #ff9800; color: white; }
-        .btn-warning:hover { background: #f57c00; }
+        .btn-warning { background: var(--warning); color: white; }
+        .btn-warning:hover { background: #e65100; }
         
         .btn-outline {
             background: transparent;
@@ -353,6 +354,143 @@
         .btn-sm { padding: 4px 12px; font-size: 13px; }
         
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        /* Focus styles for WCAG 2.1 Accessibility */
+        
+        /* Összes gombhoz focus stílus */
+        .btn:focus, .btn:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+            box-shadow: 0 0 0 4px rgba(var(--primary-rgb, 33, 150, 243), 0.2);
+        }
+        
+        .btn-primary:focus, .btn-primary:focus-visible {
+            outline: 2px solid #64b5f6;
+            outline-offset: 2px;
+            box-shadow: 0 0 0 4px rgba(33, 150, 243, 0.3);
+        }
+        
+        .btn-success:focus, .btn-success:focus-visible {
+            outline: 2px solid #81c784;
+            outline-offset: 2px;
+            box-shadow: 0 0 0 4px rgba(56, 142, 60, 0.3);
+        }
+        
+        .btn-warning:focus, .btn-warning:focus-visible {
+            outline: 2px solid #ffb74d;
+            outline-offset: 2px;
+            box-shadow: 0 0 0 4px rgba(245, 124, 0, 0.3);
+        }
+        
+        .btn-danger:focus, .btn-danger:focus-visible {
+            outline: 2px solid #e57373;
+            outline-offset: 2px;
+            box-shadow: 0 0 0 4px rgba(211, 47, 47, 0.3);
+        }
+        
+        .btn-outline:focus, .btn-outline:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+            box-shadow: 0 0 0 4px rgba(var(--primary-rgb, 33, 150, 243), 0.2);
+        }
+        
+        .btn-sm:focus, .btn-sm:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+        }
+        
+        /* Tab-okhoz focus */
+        .tab:focus, .tab:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+            box-shadow: 0 0 0 4px rgba(var(--primary-rgb, 33, 150, 243), 0.15);
+        }
+        
+        /* Category header focus */
+        .category-header:focus, .category-header:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+            background: var(--hover);
+            box-shadow: 0 0 0 4px rgba(var(--primary-rgb, 33, 150, 243), 0.15);
+        }
+        
+        /* Templates toggle gombok */
+        #templates-toggle-btn-header:focus, #templates-toggle-btn-header:focus-visible,
+        #templates-toggle-btn:focus, #templates-toggle-btn:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+            box-shadow: 0 0 0 4px rgba(var(--primary-rgb, 33, 150, 243), 0.2);
+        }
+        
+        /* Device kártyák */
+        .device-card:focus, .device-card:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+            box-shadow: 0 0 0 4px rgba(var(--primary-rgb, 33, 150, 243), 0.2);
+        }
+        
+        /* Input mezők */
+        input:focus, select:focus, textarea:focus {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+            box-shadow: 0 0 0 4px rgba(var(--primary-rgb, 33, 150, 243), 0.15);
+        }
+        
+        /* Modal close gomb */
+        .modal-close:focus, .modal-close:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+            box-shadow: 0 0 0 4px rgba(var(--primary-rgb, 33, 150, 243), 0.2);
+            background: var(--hover);
+        }
+        
+        /* Status badge */
+        .status-badge:focus, .status-badge:focus-visible {
+            outline: 2px solid #fff;
+            outline-offset: 2px;
+        }
+        
+        /* Entity card */
+        .entity-card:focus, .entity-card:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+            box-shadow: 0 0 0 4px rgba(var(--primary-rgb, 33, 150, 243), 0.15);
+        }
+        
+        /* Status item */
+        .status-item:focus, .status-item:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+        }
+        
+        /* Settings items */
+        .settings-item input:focus {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+            box-shadow: 0 0 0 4px rgba(var(--primary-rgb, 33, 150, 243), 0.15);
+        }
+        
+        /* Filter toolbar inputs */
+        .filter-group input:focus,
+        .filter-group select:focus {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+            box-shadow: 0 0 0 4px rgba(var(--primary-rgb, 33, 150, 243), 0.15);
+        }
+        
+        /* Template item */
+        .template-item:focus, .template-item:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+            background: rgba(var(--primary-rgb, 33, 150, 243), 0.1);
+            box-shadow: 0 0 0 4px rgba(var(--primary-rgb, 33, 150, 243), 0.15);
+        }
+        
+        /* Settings value */
+        .settings-value:focus {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+        }
         
         /* YAML Editor */
         .yaml-editor {
@@ -634,6 +772,122 @@
             flex-wrap: wrap;
         }
         
+        /* Templates Sidebar Animation */
+        .templates-sidebar {
+            background: var(--card-bg);
+            border-radius: 8px;
+            padding: 12px;
+            overflow-y: auto;
+            transition: max-width 0.25s ease-out, opacity 0.2s ease-out, padding 0.25s ease-out;
+            max-width: 260px;
+            opacity: 1;
+        }
+        
+        .templates-sidebar.collapsed {
+            max-width: 0;
+            opacity: 0;
+            padding-left: 0;
+            padding-right: 0;
+            overflow: hidden;
+        }
+        
+        .templates-sidebar-header {
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            justify-content: space-between;
+        }
+        
+        .templates-sidebar-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        #templates-toggle-btn {
+            display: none;
+        }
+        
+        #templates-toggle-btn:hover {
+            background: var(--hover);
+        }
+        
+        #templates-toggle-btn .material-icons {
+            color: var(--text-secondary);
+            font-size: 20px;
+        }
+        
+        #templates-sidebar-content {
+            transition: opacity 0.2s ease-out;
+        }
+        
+        .templates-sidebar.collapsed #templates-sidebar-content {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* Monaco Editor Scrollbar Enhancement */
+        .monaco-editor .scrollbar {
+            width: 16px !important;
+            height: 16px !important;
+        }
+        
+        .monaco-editor .scrollbar .slider {
+            background: rgba(0, 0, 0, 0.3) !important;
+            border-radius: 8px !important;
+        }
+        
+        .monaco-editor .scrollbar .slider:hover {
+            background: rgba(0, 0, 0, 0.5) !important;
+        }
+        
+        .monaco-editor .scrollbar .slider:active {
+            background: rgba(74, 144, 217, 0.8) !important;
+        }
+        
+        /* Touch-friendly scrollbar for mobile */
+        @media (max-width: 768px) {
+            .monaco-editor .scrollbar {
+                width: 20px !important;
+                height: 20px !important;
+            }
+            
+            .monaco-editor .scrollbar .slider {
+                background: rgba(0, 0, 0, 0.4) !important;
+                border-radius: 10px !important;
+            }
+        }
+        
+        /* Smooth scroll behavior for YAML editor */
+        #yaml-editor-container {
+            scroll-behavior: smooth;
+        }
+        
+        /* WebKit scrollbar fallback for non-Monaco editors */
+        .yaml-textarea::-webkit-scrollbar {
+            width: 16px;
+            height: 16px;
+        }
+        
+        .yaml-textarea::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+        
+        .yaml-textarea::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+        }
+        
+        .yaml-textarea::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.5);
+        }
+        
+        .yaml-textarea::-webkit-scrollbar-thumb:active {
+            background: rgba(74, 144, 217, 0.8);
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .container { padding: 12px; }
@@ -641,6 +895,7 @@
             .yaml-editor { grid-template-columns: 1fr; }
             .device-grid { grid-template-columns: 1fr; }
             .settings-grid { grid-template-columns: 1fr; }
+            .templates-sidebar { max-width: 200px; }
         }
     </style>
 </head>
@@ -837,21 +1092,32 @@
                             <span class="material-icons">key</span>
                             Secrets
                         </button>
+                        <button class="btn btn-outline" onclick="toggleTemplatesSidebar()" id="templates-toggle-btn-header" title="Toggle Templates Sidebar" aria-expanded="true" aria-controls="templates-sidebar" tabindex="0" onkeydown="handleToggleKeydown(event)">
+                            <span class="material-icons" id="templates-toggle-icon-header">visibility_off</span>
+                            <span>Templates</span>
+                        </button>
                     </div>
                 </div>
                 <div class="card-body">
                     <div class="yaml-editor-container" style="display: grid; grid-template-columns: 250px 1fr 280px; gap: 16px; min-height: 500px;">
                         <!-- Templates Sidebar -->
-                        <div class="templates-sidebar" style="background: var(--card-bg); border-radius: 8px; padding: 12px; overflow-y: auto;">
-                            <h4 style="margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-                                <span class="material-icons" style="color: var(--primary);">description</span>
-                                Templates
+                        <div class="templates-sidebar" id="templates-sidebar">
+                            <h4 class="templates-sidebar-header">
+                                <span class="templates-sidebar-title">
+                                    <span class="material-icons" style="color: var(--primary);">description</span>
+                                    <span id="templates-sidebar-title">Templates</span>
+                                </span>
+                                <button id="templates-toggle-btn" onclick="toggleTemplatesSidebar()" title="Toggle Templates Sidebar" aria-expanded="true" aria-controls="templates-sidebar" tabindex="0" onkeydown="handleToggleKeydown(event)">
+                                    <span class="material-icons" id="templates-toggle-icon">visibility_off</span>
+                                </button>
                             </h4>
+                            <div id="templates-sidebar-content">
                             <div style="margin-bottom: 8px;">
                                 <input type="text" id="template-search" placeholder="Search templates..." style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 13px;">
                             </div>
                             <div id="templates-list" style="display: flex; flex-direction: column; gap: 4px;">
                                 <!-- Templates will be populated here -->
+                            </div>
                             </div>
                         </div>
                         
@@ -947,7 +1213,7 @@
                     <!-- Statistics -->
                     <div class="chip-statistics" style="display: flex; gap: 12px; margin: 0 16px 16px 16px; flex-wrap: wrap;">
                         <div class="stat-card" style="flex: 1; min-width: 100px; background: var(--bg); border-radius: 8px; padding: 12px; text-align: center;">
-                            <div id="chip-viz-total-pins" class="stat-value" style="font-size: 28px; font-weight: 600; color: #ff9800;">-</div>
+                            <div id="chip-viz-total-pins" class="stat-value" style="font-size: 28px; font-weight: 600; color: var(--warning);">-</div>
                             <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase;">Total Pins</div>
                         </div>
                         <div class="stat-card" style="flex: 1; min-width: 100px; background: var(--bg); border-radius: 8px; padding: 12px; text-align: center;">
@@ -955,7 +1221,7 @@
                             <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase;">Used Pins</div>
                         </div>
                         <div class="stat-card" style="flex: 1; min-width: 100px; background: var(--bg); border-radius: 8px; padding: 12px; text-align: center;">
-                            <div id="chip-viz-free-pins" class="stat-value" style="font-size: 28px; font-weight: 600; color: #4caf50;">-</div>
+                            <div id="chip-viz-free-pins" class="stat-value" style="font-size: 28px; font-weight: 600; color: var(--success);">-</div>
                             <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase;">Free Pins</div>
                         </div>
                         <div class="stat-card" style="flex: 1; min-width: 100px; background: var(--bg); border-radius: 8px; padding: 12px; text-align: center;">
@@ -979,7 +1245,7 @@
                             <span style="font-size: 12px;">GPIO</span>
                         </div>
                         <div style="display: flex; align-items: center; gap: 4px;">
-                            <span style="width: 12px; height: 12px; border-radius: 50%; background: #4caf50;"></span>
+                            <span style="width: 12px; height: 12px; border-radius: 50%; background: var(--success);"></span>
                             <span style="font-size: 12px;">I2C</span>
                         </div>
                         <div style="display: flex; align-items: center; gap: 4px;">
@@ -991,7 +1257,7 @@
                             <span style="font-size: 12px;">UART</span>
                         </div>
                         <div style="display: flex; align-items: center; gap: 4px;">
-                            <span style="width: 12px; height: 12px; border-radius: 50%; background: #ff9800;"></span>
+                            <span style="width: 12px; height: 12px; border-radius: 50%; background: var(--warning);"></span>
                             <span style="font-size: 12px;">ADC</span>
                         </div>
                     </div>
@@ -1835,8 +2101,8 @@ ota_password: myotapassword"></textarea>
                 const board = device.board || '-';
                 const compStatus = compilationStatus[device.name] || { status: 'idle', progress: 0, message: '' };
                 
-                var html = '<div class="device-card" onclick="showDeviceDetails(\'' + device.name + '\')" data-status="' + status + '" data-device="' + device.name + '">';
-                html += '<div class="device-header"><h3>' + device.name + '</h3>';
+                var html = '<div class="device-card" onclick="showDeviceDetails(\'' + escapeHtml(device.name) + '\')" data-status="' + status + '" data-device="' + escapeHtml(device.name) + '">';
+                html += '<div class="device-header"><h3>' + escapeHtml(device.name) + '</h3>';
                 html += '<div class="device-status" style="position: relative;">';
                 
                 // Main status dot
@@ -1845,7 +2111,7 @@ ota_password: myotapassword"></textarea>
                 
                 // Compilation status indicator
                 if (compStatus.status === 'compiling') {
-                    html += '<div class="compile-indicator compiling" title="' + (compStatus.message || 'Compiling...') + '">';
+                    html += '<div class="compile-indicator compiling" title="' + escapeHtml(compStatus.message || 'Compiling...') + '">';
                     html += '<span class="material-icons" style="animation: spin 1s linear infinite; font-size: 14px;">refresh</span>';
                     html += '<span style="font-size: 11px;">' + compStatus.progress + '%</span>';
                     html += '</div>';
@@ -1854,7 +2120,7 @@ ota_password: myotapassword"></textarea>
                     html += '<span class="material-icons" style="font-size: 14px; color: var(--success);">check_circle</span>';
                     html += '</div>';
                 } else if (compStatus.status === 'error') {
-                    html += '<div class="compile-indicator error" title="' + (compStatus.message || 'Compilation failed') + '">';
+                    html += '<div class="compile-indicator error" title="' + escapeHtml(compStatus.message || 'Compilation failed') + '">';
                     html += '<span class="material-icons" style="font-size: 14px; color: var(--error);">error</span>';
                     html += '</div>';
                 }
@@ -1876,15 +2142,15 @@ ota_password: myotapassword"></textarea>
                 
                 html += '<div class="device-body">';
                 html += '<div class="device-info">';
-                html += '<div class="device-info-item"><label>Platform</label><span>' + platform + '</span></div>';
-                html += '<div class="device-info-item"><label>Board</label><span>' + board + '</span></div>';
-                html += '<div class="device-info-item"><label>Firmware</label><span>' + (device.deployed_version || 'Not Installed') + '</span></div>';
-                html += '<div class="device-info-item"><label>Latest</label><span>' + (device.current_version || '-') + '</span></div>';
+                html += '<div class="device-info-item"><label>Platform</label><span>' + escapeHtml(platform) + '</span></div>';
+                html += '<div class="device-info-item"><label>Board</label><span>' + escapeHtml(board) + '</span></div>';
+                html += '<div class="device-info-item"><label>Firmware</label><span>' + escapeHtml(device.deployed_version || 'Not Installed') + '</span></div>';
+                html += '<div class="device-info-item"><label>Latest</label><span>' + escapeHtml(device.current_version || '-') + '</span></div>';
                 html += '</div>';
                 
                 // Chip preview (if platform and board known)
                 if (platform !== 'Unknown' && board !== '-') {
-                    html += '<div class="chip-preview" onclick="event.stopPropagation(); showChipVisualization(\'' + device.name + '\', \'' + platform + '\', \'' + board + '\')" style="cursor: pointer; margin: 8px 0; padding: 8px; background: var(--bg); border-radius: 8px; border: 1px solid var(--border); display: flex; align-items: center; gap: 8px;">';
+                    html += '<div class="chip-preview" onclick="event.stopPropagation(); showChipVisualization(\'' + escapeHtml(device.name) + '\', \'' + escapeHtml(platform) + '\', \'' + escapeHtml(board) + '\')" style="cursor: pointer; margin: 8px 0; padding: 8px; background: var(--bg); border-radius: 8px; border: 1px solid var(--border); display: flex; align-items: center; gap: 8px;">';
                     html += '<span class="material-icons" style="font-size: 20px; color: var(--primary);">memory</span>';
                     html += '<span style="font-size: 12px; color: var(--text-secondary);">Click to view chip pins</span>';
                     html += '</div>';
@@ -1899,11 +2165,11 @@ ota_password: myotapassword"></textarea>
                         html += '<span class="material-icons" style="color: var(--warning);">schedule</span>';
                         html += '<span style="font-size: 12px; color: var(--text-secondary);">Queued (position: ' + (compStatus.queue_position || 0) + ')</span>';
                     } else {
-                        html += '<div class="compile-indicator compiling" title="' + (compStatus.message || 'Compiling...') + '">';
+                        html += '<div class="compile-indicator compiling" title="' + escapeHtml(compStatus.message || 'Compiling...') + '">';
                         html += '<span class="material-icons spinning" style="font-size: 16px;">refresh</span>';
                         html += '<span style="font-size: 12px;">' + (compStatus.progress || 0) + '%</span>';
                         html += '</div>';
-                        html += '<button class="btn btn-danger" onclick="event.stopPropagation(); cancelCompile(\'' + device.name + '\', \'' + (compStatus.task_id || '') + '\')" style="font-size: 11px; padding: 4px 8px;">';
+                        html += '<button class="btn btn-danger" onclick="event.stopPropagation(); cancelCompile(\'' + escapeHtml(device.name) + '\', \'' + escapeHtml(compStatus.task_id || '') + '\')" style="font-size: 11px; padding: 4px 8px;">';
                         html += '<span class="material-icons" style="font-size: 14px;">cancel</span>Cancel</button>';
                     }
                     html += '</div>';
@@ -1915,23 +2181,23 @@ ota_password: myotapassword"></textarea>
                     html += '</div></div>';
                 } else if (compStatus.status === 'error' || compStatus.status === 'cancelled') {
                     html += '<div class="compile-status" style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">';
-                    html += '<div class="compile-indicator error" title="' + (compStatus.message || compStatus.status) + '">';
+                    html += '<div class="compile-indicator error" title="' + escapeHtml(compStatus.message || compStatus.status) + '">';
                     html += '<span class="material-icons" style="font-size: 16px; color: var(--error);">error</span>';
                     html += '<span style="font-size: 12px; color: var(--error);">' + (compStatus.status === 'cancelled' ? 'Cancelled' : 'Failed') + '</span>';
                     html += '</div></div>';
                 }
                 
                 html += '<div class="status-dot ' + (device.status || 'unknown') + '"></div>';
-                html += '<span>' + (device.status || 'Unknown') + '</span>';
+                html += '<span>' + escapeHtml(device.status || 'Unknown') + '</span>';
                 html += '</div>';
                 html += '<div class="device-actions">';
-                html += '<button class="btn btn-primary" onclick="event.stopPropagation(); compileDevice(\'' + device.name + '\')"><span class="material-icons">build</span>Compile</button>';
-                html += '<button class="btn btn-success" onclick="event.stopPropagation(); showUploadModal(\'' + device.name + '\')"><span class="material-icons">system_update</span>Update</button>';
-                html += '<button class="btn btn-outline" onclick="event.stopPropagation(); downloadFirmware(\'' + device.name + '\')"><span class="material-icons">download</span>Download</button>';
-                html += '<button class="btn btn-outline" onclick="event.stopPropagation(); showYaml(\'' + device.name + '\')"><span class="material-icons">code</span>YAML</button>';
-                html += '<button class="btn btn-outline" onclick="event.stopPropagation(); exportDevice(\'' + device.name + '\')" title="Export device config"><span class="material-icons">file_download</span>Export</button>';
-                html += '<button class="btn btn-outline" onclick="event.stopPropagation(); showCompareModal(\'' + device.name + '\')" title="Compare with another device"><span class="material-icons">compare</span>Compare</button>';
-                html += '<button class="btn btn-danger" onclick="event.stopPropagation(); deleteDevice(\'' + device.name + '\')" style="background: var(--error); color: white;"><span class="material-icons">delete</span>Delete</button>';
+                html += '<button class="btn btn-primary" onclick="event.stopPropagation(); compileDevice(\'' + escapeHtml(device.name) + '\')"><span class="material-icons">build</span>Compile</button>';
+                html += '<button class="btn btn-success" onclick="event.stopPropagation(); showUploadModal(\'' + escapeHtml(device.name) + '\')"><span class="material-icons">system_update</span>Update</button>';
+                html += '<button class="btn btn-outline" onclick="event.stopPropagation(); downloadFirmware(\'' + escapeHtml(device.name) + '\')"><span class="material-icons">download</span>Download</button>';
+                html += '<button class="btn btn-outline" onclick="event.stopPropagation(); showYaml(\'' + escapeHtml(device.name) + '\')"><span class="material-icons">code</span>YAML</button>';
+                html += '<button class="btn btn-outline" onclick="event.stopPropagation(); exportDevice(\'' + escapeHtml(device.name) + '\')" title="Export device config"><span class="material-icons">file_download</span>Export</button>';
+                html += '<button class="btn btn-outline" onclick="event.stopPropagation(); showCompareModal(\'' + escapeHtml(device.name) + '\')" title="Compare with another device"><span class="material-icons">compare</span>Compare</button>';
+                html += '<button class="btn btn-danger" onclick="event.stopPropagation(); deleteDevice(\'' + escapeHtml(device.name) + '\')" style="background: var(--error); color: white;"><span class="material-icons">delete</span>Delete</button>';
                 html += '</div></div></div>';
                 return html;
             }).join('');
@@ -2164,28 +2430,28 @@ ota_password: myotapassword"></textarea>
                                 <span class="material-icons">developer_board</span>
                                 <div class="status-item-info">
                                     <h4>Platform</h4>
-                                    <p>${device.platform}</p>
+                                    <p>${escapeHtml(device.platform || 'Unknown')}</p>
                                 </div>
                             </div>
                             <div class="status-item">
                                 <span class="material-icons">version</span>
                                 <div class="status-item-info">
                                     <h4>Deployed Version</h4>
-                                    <p>${device.deployed_version}</p>
+                                    <p>${escapeHtml(device.deployed_version || 'Not Installed')}</p>
                                 </div>
                             </div>
                             <div class="status-item">
                                 <span class="material-icons">update</span>
                                 <div class="status-item-info">
                                     <h4>ESPHome Version</h4>
-                                    <p>${device.current_version}</p>
+                                    <p>${escapeHtml(device.current_version || '-')}</p>
                                 </div>
                             </div>
                             <div class="status-item">
                                 <span class="material-icons">router</span>
                                 <div class="status-item-info">
                                     <h4>Address</h4>
-                                    <p>${device.address || 'N/A'}</p>
+                                    <p>${escapeHtml(device.address || 'N/A')}</p>
                                 </div>
                             </div>
                         </div>
@@ -2193,15 +2459,15 @@ ota_password: myotapassword"></textarea>
                         <div class="entities-grid" style="margin-top: 12px;">
                             ${(device.ha_entities || []).map(e => `
                                 <div class="entity-card">
-                                    <div class="domain">${e.domain}</div>
-                                    <div class="name">${e.friendly_name || e.entity_id}</div>
-                                    <div class="state">${e.state}</div>
+                                    <div class="domain">${escapeHtml(e.domain)}</div>
+                                    <div class="name">${escapeHtml(e.friendly_name || e.entity_id)}</div>
+                                    <div class="state">${escapeHtml(e.state)}</div>
                                 </div>
                             `).join('')}
                         </div>
                         <h4 style="margin-top: 20px;">Integrations</h4>
                         <div style="margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px;">
-                            ${(device.integrations || []).map(i => `<span style="padding: 4px 8px; background: var(--bg); border-radius: 4px; font-size: 12px;">${i}</span>`).join('')}
+                            ${(device.integrations || []).map(i => `<span style="padding: 4px 8px; background: var(--bg); border-radius: 4px; font-size: 12px;">${escapeHtml(i)}</span>`).join('')}
                         </div>
                     `;
                     
@@ -2484,6 +2750,7 @@ ota_password: myotapassword"></textarea>
         // Initialize on load
         document.addEventListener('DOMContentLoaded', () => {
             initTemplatesSidebar();
+            initTemplatesSidebarToggle();
             fetchDevices();
             fetchHealth();
             loadSettings();
@@ -5578,6 +5845,124 @@ display:
             filterTemplates(category);
         }
         
+        // Safe localStorage functions for private mode handling
+        function safeLocalStorageGet(key, defaultValue = null) {
+            try {
+                const value = localStorage.getItem(key);
+                return value !== null ? value : defaultValue;
+            } catch (e) {
+                console.warn('localStorage unavailable (private mode?):', e);
+                return defaultValue;
+            }
+        }
+        
+        function safeLocalStorageSet(key, value) {
+            try {
+                localStorage.setItem(key, value);
+                return true;
+            } catch (e) {
+                console.warn('localStorage unavailable (private mode?):', e);
+                return false;
+            }
+        }
+
+        // Keyboard handler for toggle buttons (Enter and Space support)
+        function handleToggleKeydown(event) {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                toggleTemplatesSidebar();
+            }
+        }
+
+        // Toggle Templates Sidebar visibility with smooth animation
+        function toggleTemplatesSidebar() {
+            const sidebar = document.getElementById('templates-sidebar');
+            const container = document.querySelector('.yaml-editor-container');
+            const iconSidebar = document.getElementById('templates-toggle-icon');
+            const iconHeader = document.getElementById('templates-toggle-icon-header');
+            const btnHeader = document.getElementById('templates-toggle-btn-header');
+            const btnSidebar = document.getElementById('templates-toggle-btn');
+            
+            if (!sidebar || !container) return;
+            
+            const isCollapsed = sidebar.classList.contains('collapsed');
+            
+            if (isCollapsed) {
+                // Show sidebar - animate in
+                sidebar.classList.remove('collapsed');
+                container.style.gridTemplateColumns = '260px 1fr 280px';
+                safeLocalStorageSet('esphome_templates_hidden', 'false');
+                if (iconSidebar) {
+                    iconSidebar.textContent = 'visibility_off';
+                }
+                if (iconHeader) {
+                    iconHeader.textContent = 'visibility_off';
+                }
+                // WCAG 2.1: Update aria-expanded to indicate sidebar is visible
+                if (btnHeader) {
+                    btnHeader.setAttribute('aria-expanded', 'true');
+                }
+                if (btnSidebar) {
+                    btnSidebar.setAttribute('aria-expanded', 'true');
+                }
+            } else {
+                // Hide sidebar - animate out
+                sidebar.classList.add('collapsed');
+                container.style.gridTemplateColumns = '1fr 280px';
+                safeLocalStorageSet('esphome_templates_hidden', 'true');
+                if (iconSidebar) {
+                    iconSidebar.textContent = 'visibility';
+                }
+                if (iconHeader) {
+                    iconHeader.textContent = 'visibility';
+                }
+                // WCAG 2.1: Update aria-expanded to indicate sidebar is hidden
+                if (btnHeader) {
+                    btnHeader.setAttribute('aria-expanded', 'false');
+                }
+                if (btnSidebar) {
+                    btnSidebar.setAttribute('aria-expanded', 'false');
+                }
+            }
+        }
+        
+        // Initialize templates sidebar toggle state on load
+        function initTemplatesSidebarToggle() {
+            const isHidden = safeLocalStorageGet('esphome_templates_hidden', 'false') === 'true';
+            const sidebar = document.getElementById('templates-sidebar');
+            const container = document.querySelector('.yaml-editor-container');
+            const iconSidebar = document.getElementById('templates-toggle-icon');
+            const iconHeader = document.getElementById('templates-toggle-icon-header');
+            const btnHeader = document.getElementById('templates-toggle-btn-header');
+            const btnSidebar = document.getElementById('templates-toggle-btn');
+            
+            if (isHidden && sidebar && container) {
+                sidebar.classList.add('collapsed');
+                container.style.gridTemplateColumns = '1fr 280px';
+                if (iconSidebar) {
+                    iconSidebar.textContent = 'visibility';
+                }
+                if (iconHeader) {
+                    iconHeader.textContent = 'visibility';
+                }
+                // WCAG 2.1: Set aria-expanded to false when sidebar is hidden
+                if (btnHeader) {
+                    btnHeader.setAttribute('aria-expanded', 'false');
+                }
+                if (btnSidebar) {
+                    btnSidebar.setAttribute('aria-expanded', 'false');
+                }
+            } else {
+                // WCAG 2.1: Set aria-expanded to true when sidebar is visible
+                if (btnHeader) {
+                    btnHeader.setAttribute('aria-expanded', 'true');
+                }
+                if (btnSidebar) {
+                    btnSidebar.setAttribute('aria-expanded', 'true');
+                }
+            }
+        }
+        
         // Initialize templates sidebar
         function initTemplatesSidebar() {
             const sidebar = document.getElementById('templates-list');
@@ -5613,6 +5998,42 @@ display:
             }
         }
         
+        // Collapsible categories state (persisted in localStorage)
+        // Safe JSON parse with fallback
+        function safeJSONParse(str, fallback = {}) {
+            try {
+                return JSON.parse(str) || fallback;
+            } catch (e) {
+                console.warn('JSON parse error:', e);
+                return fallback;
+            }
+        }
+        
+        let collapsedCategories = safeJSONParse(safeLocalStorageGet('esphome_collapsed_categories'), '{}');
+        
+        // Toggle category collapse state
+        function toggleTemplateCategory(cat) {
+            collapsedCategories[cat] = !collapsedCategories[cat];
+            safeLocalStorageSet('esphome_collapsed_categories', JSON.stringify(collapsedCategories));
+            // Update the category UI
+            const content = document.getElementById('cat-content-' + cat);
+            const icon = document.getElementById('cat-icon-' + cat);
+            const header = document.getElementById('cat-header-' + cat);
+            if (content && icon && header) {
+                if (collapsedCategories[cat]) {
+                    content.style.display = 'none';
+                    icon.textContent = 'expand_more';
+                    // WCAG 2.1: Update aria-expanded to indicate category is collapsed
+                    header.setAttribute('aria-expanded', 'false');
+                } else {
+                    content.style.display = 'flex';
+                    icon.textContent = 'expand_less';
+                    // WCAG 2.1: Update aria-expanded to indicate category is expanded
+                    header.setAttribute('aria-expanded', 'true');
+                }
+            }
+        }
+        
         // Render templates sidebar with optional search filter
         function renderTemplatesSidebar(categories, searchQuery) {
             const sidebar = document.getElementById('templates-list');
@@ -5633,10 +6054,33 @@ display:
                 
                 if (matchingTemplates.length === 0) continue;
                 
-                html += `<div style="margin-top: 12px;"><strong style="font-size: 12px; color: var(--text-secondary);">${catName}</strong></div>`;
+                // Determine initial collapsed state (default: expanded, or from localStorage)
+                const isCollapsed = collapsedCategories[cat] === true;
+                const displayStyle = isCollapsed ? 'display: none;' : 'display: flex;';
+                const iconState = isCollapsed ? 'expand_more' : 'expand_less';
+                
+                // Collapsible category header
+                html += `<div class="template-category" style="margin-top: 8px;">
+                    <div id="cat-header-${cat}" class="category-header" onclick="toggleTemplateCategory('${cat}')" 
+                         role="button"
+                         aria-expanded="${isCollapsed ? 'false' : 'true'}"
+                         aria-controls="cat-content-${cat}"
+                         tabindex="0"
+                         style="display: flex; align-items: center; gap: 4px; cursor: pointer; padding: 6px 4px; border-radius: 4px; background: var(--bg); margin-bottom: 4px; user-select: none;"
+                         onmouseover="this.style.background='var(--hover)'" 
+                         onmouseout="this.style.background='var(--bg)'"
+                         onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleTemplateCategory('${cat}')}">
+                        <span id="cat-icon-${cat}" class="material-icons" style="font-size: 18px; color: var(--text-secondary);">${iconState}</span>
+                        <strong style="font-size: 12px; color: var(--text-secondary);">${catName}</strong>
+                        <span style="font-size: 10px; color: var(--text-secondary); margin-left: auto;">${matchingTemplates.length}</span>
+                    </div>
+                    <div id="cat-content-${cat}" class="category-content" style="${displayStyle} flex-direction: column; gap: 4px; padding-left: 4px;">`;
+                
                 for (const [key, template] of matchingTemplates) {
-                    html += `<button class="btn btn-outline" style="width: 100%; margin-top: 4px; text-align: left; font-size: 12px;" onclick="showTemplateModal('${template.category}'); setTimeout(() => { document.getElementById('template-selector').value='${key}'; loadTemplateParams(); }, 100);">${template.name}</button>`;
+                    html += `<button class="btn btn-outline" style="width: 100%; text-align: left; font-size: 12px;" onclick="showTemplateModal('${escapeHtml(template.category)}'); setTimeout(() => { document.getElementById('template-selector').value='${escapeHtml(key)}'; loadTemplateParams(); }, 100);">${escapeHtml(template.name)}</button>`;
                 }
+                
+                html += `</div></div>`;
             }
             
             if (!html && searchQuery) {
@@ -5865,7 +6309,7 @@ display:
                                     ${hasPower ? `
                                         <div style="display: flex; flex-wrap: wrap; gap: 8px; padding-top: 8px; border-top: 1px solid var(--border);">
                                             <div style="display: flex; align-items: center; gap: 4px;">
-                                                <span class="material-icons" style="font-size: 14px; color: ${reqs.power.includes('5V') ? '#ff9800' : '#4caf50'};">power</span>
+                                                <span class="material-icons" style="font-size: 14px; color: ${reqs.power.includes('5V') ? 'var(--warning)' : 'var(--success)'};">power</span>
                                                 <span style="font-size: 11px; color: var(--text-secondary);">Táp: <strong style="color: var(--text-primary);">${reqs.power}</strong></span>
                                             </div>
                                             <div style="display: flex; align-items: center; gap: 4px;">
@@ -6685,7 +7129,7 @@ ${framework === 'esp-idf' ? '    version: recommended\n' : ''}
     <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.50.0/min/vs/loader.js"></script>
     <script src="/static/js/editor.js?v=202603281219"></script>
     <script src="/static/js/chip-viz.js?v=202603281219"></script>
-    <script src="/static/js/chip-viz-spider.js?v=202603281349"></script>
+    <script src="/static/js/chip-viz-spider.js?v=202603281704"></script>
     <script>
         // Initialize Monaco Editor immediately after script load
         (function() {

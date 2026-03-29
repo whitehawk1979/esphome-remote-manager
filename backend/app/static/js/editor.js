@@ -138,7 +138,105 @@ function initMonacoEditor() {
             }
         });
         
-        // Create editor with VS Code-like theme
+        // YAML Folding Provider - Collapsible sections for ESPHome config
+        monaco.languages.registerFoldingRangeProvider('yaml', {
+            provideFoldingRanges: function(model, context, token) {
+                const ranges = [];
+                const lines = model.getLinesContent();
+                
+                // ESPHome top-level sections
+                const topLevelKeys = [
+                    'esphome', 'esp32', 'esp8266', 'wifi', 'logger', 'api', 'ota',
+                    'i2c', 'spi', 'uart', 'sensor', 'binary_sensor', 'switch',
+                    'light', 'output', 'display', 'font', 'image', 'globals',
+                    'interval', 'time', 'sun', 'mqtt', 'web_server', 'captive_portal',
+                    'http_request', 'bluetooth', 'ble', 'ethernet',
+                    // Template-related sections (collapsible in editor)
+                    'templates', 'button', 'select', 'number', 'text', 'lock',
+                    'cover', 'fan', 'climate', 'stepper', 'servo', 'pwm'
+                ];
+                
+                let currentSection = null;
+                let currentStart = 0;
+                let currentIndent = 0;
+                
+                // Platform blocks tracking - FIX for multiple platform folding
+                let platformStart = null;
+                
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i];
+                    const trimmed = line.trim();
+                    const indent = line.search(/\S/);
+                    
+                    if (trimmed === '' || trimmed.startsWith('#')) continue;
+                    
+                    // Top-level section detection
+                    let isTopLevelKey = false;
+                    for (const key of topLevelKeys) {
+                        if (trimmed === `${key}:` || trimmed.startsWith(`${key}:`)) {
+                            // Close previous platform block if any
+                            if (platformStart !== null && i > platformStart) {
+                                ranges.push({
+                                    start: platformStart,
+                                    end: i - 1,
+                                    kind: monaco.languages.FoldingRangeKind.Region
+                                });
+                                platformStart = null;
+                            }
+                            
+                            // Close previous section
+                            if (currentSection !== null && i > currentStart) {
+                                ranges.push({
+                                    start: currentStart,
+                                    end: i - 1,
+                                    kind: monaco.languages.FoldingRangeKind.Region
+                                });
+                            }
+                            currentSection = key;
+                            currentStart = i;
+                            currentIndent = indent;
+                            isTopLevelKey = true;
+                            break;
+                        }
+                    }
+                    
+                    // Platform blocks (list items under sections) - FIXED LOGIC
+                    if (trimmed.startsWith('- platform:')) {
+                        if (platformStart !== null && i > platformStart) {
+                            // Close previous platform block
+                            ranges.push({
+                                start: platformStart,
+                                end: i - 1,
+                                kind: monaco.languages.FoldingRangeKind.Region
+                            });
+                        }
+                        platformStart = i;
+                    }
+                }
+                
+                // Close last platform block if any
+                if (platformStart !== null && lines.length > platformStart + 1) {
+                    ranges.push({
+                        start: platformStart,
+                        end: lines.length - 1,
+                        kind: monaco.languages.FoldingRangeKind.Region
+                    });
+                }
+                
+                // Close last section
+                if (currentSection !== null && lines.length > currentStart + 1) {
+                    ranges.push({
+                        start: currentStart,
+                        end: lines.length - 1,
+                        kind: monaco.languages.FoldingRangeKind.Region
+                    });
+                }
+                
+                return ranges;
+            }
+        });
+        
+        // Create editor with VS Code-like theme and enhanced scrollbar
         editor = monaco.editor.create(document.getElementById('yaml-editor-container'), {
             value: getDefaultYAML(),
             language: 'yaml',
@@ -148,7 +246,7 @@ function initMonacoEditor() {
             fontSize: 14,
             lineNumbers: 'on',
             roundedSelection: true,
-            scrollBeyondLastLine: false,
+            scrollBeyondLastLine: true,
             wordWrap: 'on',
             folding: true,
             foldingStrategy: 'indentation',
@@ -176,6 +274,18 @@ function initMonacoEditor() {
                 showFunctions: true,
                 showVariables: true,
                 showConstants: true
+            },
+            // Enhanced scrollbar configuration for easy navigation
+            scrollbar: {
+                vertical: 'visible',
+                verticalScrollbarSize: 16,
+                verticalHasArrows: false,
+                horizontal: 'visible',
+                horizontalScrollbarSize: 16,
+                horizontalHasArrows: false,
+                alwaysConsumeMouseWheel: true,
+                useShadows: true,
+                shadowSize: 4
             }
         });
         
@@ -197,10 +307,11 @@ function initMonacoEditor() {
         if (textarea) textarea.style.display = 'none';
         if (monacoContainer) monacoContainer.style.display = 'block';
         
-        // Add validation on content change
-        editor.onDidChangeModelContent(() => {
-            debounce(validateYAML, 500)();
-        });
+        // Initialize debounce functions
+        initDebounces();
+        
+        // Content change handler - loop prevention with version tracking
+        editor.onDidChangeModelContent(onContentChange);
         
         // Initial validation
         validateYAML();
@@ -221,6 +332,18 @@ function initMonacoEditor() {
 let deviceName = null;
 let selectedBoard = 'esp32dev';
 let selectedPlatform = 'ESP32';
+
+// Loop prevention variables
+let validationTimeout = null;
+let lastYAML = '';
+let lastPinsJSON = '';  // Track pin state changes
+let isUpdating = false;
+let contentVersion = 0;
+let lastProcessedVersion = 0;
+let pendingPinData = null;
+let pendingPinVersion = 0;
+let debouncedValidation = null;
+let debouncedPinUpdate = null;
 
 // Use window.API_BASE defined in index.html (fallback to window.location.origin)
 // Note: API_BASE is declared as const in index.html inline script, accessible globally via window.API_BASE
@@ -411,11 +534,23 @@ function renderPinRow(pinNum, usedPins, side) {
     `;
 }
 
-// Debounce helper
-let validationTimeout = null;
-let lastYAML = '';
-let isUpdating = false;
+// Debounce constants
+const VALIDATION_DEBOUNCE_MS = 1000;
+const PIN_UPDATE_DEBOUNCE_MS = 2000;
 
+// Debounce helper - creates a debounced function
+function createDebounce(func, wait, context) {
+    let timeout = null;
+    return function(...args) {
+        if (timeout) clearTimeout(timeout);
+        timeout = setTimeout(() => {
+            timeout = null;
+            func.apply(context || this, args);
+        }, wait);
+    };
+}
+
+// Legacy debounce function for backwards compatibility
 function debounce(func, wait) {
     let timeout;
     return function executedFunction(...args) {
@@ -428,70 +563,98 @@ function debounce(func, wait) {
     };
 }
 
-// Validate YAML - optimized to prevent loops
-async function validateYAML() {
+// Content change handler - loop prevention with version tracking
+function onContentChange() {
     if (!editor || isUpdating) return;
     
-    const yamlContent = editor.getValue();
+    contentVersion++;
+    const currentVersion = contentVersion;
+    const currentYAML = editor.getValue();
     
-    // Skip if content hasn't changed
+    // Skip if content hasn't actually changed
+    if (currentYAML === lastYAML) return;
+    
+    // Trigger debounced validation
+    if (debouncedValidation) {
+        debouncedValidation(currentYAML, currentVersion);
+    }
+}
+
+// Initialize debounce functions
+function initDebounces() {
+    debouncedValidation = createDebounce(performValidation, VALIDATION_DEBOUNCE_MS);
+    debouncedPinUpdate = createDebounce(function() {
+        if (pendingPinData && pendingPinVersion >= contentVersion) {
+            updatePinVisualization(pendingPinData);
+        }
+    }, PIN_UPDATE_DEBOUNCE_MS);
+}
+
+// Perform validation with version tracking to prevent loops
+async function performValidation(yamlContent, version) {
+    if (isUpdating || version !== contentVersion) return;
     if (yamlContent === lastYAML) return;
-    lastYAML = yamlContent;
     
     const validationStatus = document.getElementById('validation-status');
     if (!validationStatus) return;
     
-    // Show validating status
-    validationStatus.innerHTML = `
-        <span class="material-icons" style="color: var(--warning); animation: spin 1s linear infinite;">sync</span>
-        <span style="color: var(--warning);">Validating...</span>
-    `;
-    
-    // Clear any pending validation
-    if (validationTimeout) {
-        clearTimeout(validationTimeout);
-    }
-    
-    // Debounce API call - only validate after 1 second of no changes
-    validationTimeout = setTimeout(async () => {
-        try {
-            isUpdating = true;
+    try {
+        isUpdating = true;
+        validationStatus.innerHTML = `<span class="material-icons" style="color: var(--warning); animation: spin 1s linear infinite;">sync</span><span style="color: var(--warning);">Validating...</span>`;
+        
+        const response = await fetch(`${window.API_BASE || window.location.origin}/api/validate/yaml`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ yaml: yamlContent })
+        });
+        
+        const result = await response.json();
+        
+        // Check if version is still current
+        if (version !== contentVersion) return;
+        
+        if (result.success && result.valid) {
+            validationStatus.innerHTML = `<span class="material-icons" style="color: var(--success);">check_circle</span><span style="color: var(--success);">YAML valid</span>`;
+            lastYAML = yamlContent;
+            lastProcessedVersion = version;
             
-            const response = await fetch(`${window.API_BASE || window.location.origin}/api/validate/yaml`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ yaml: yamlContent })
-            });
-            
-            const result = await response.json();
-            
-            if (result.success && result.valid) {
-                validationStatus.innerHTML = `
-                    <span class="material-icons" style="color: var(--success);">check_circle</span>
-                    <span style="color: var(--success);">YAML valid</span>
-                `;
-                
-                // Update pin visualization only if pins changed
-                if (result.used_pins && JSON.stringify(result.used_pins) !== lastYAML) {
-                    updatePinVisualization(result.used_pins);
+            // Pin update - ONLY if pins changed
+            if (result.used_pins) {
+                const pinsJSON = JSON.stringify(result.used_pins);
+                if (pinsJSON !== lastPinsJSON) {
+                    lastPinsJSON = pinsJSON;
+                    if (debouncedPinUpdate) {
+                        pendingPinData = result.used_pins;
+                        pendingPinVersion = version;
+                        debouncedPinUpdate();
+                    }
                 }
-            } else {
-                const errorMsg = result.error || result.errors?.join(', ') || 'Validation failed';
-                validationStatus.innerHTML = `
-                    <span class="material-icons" style="color: var(--error);">error</span>
-                    <span style="color: var(--error);">${errorMsg}</span>
-                `;
             }
-        } catch (error) {
-            console.error('Validation error:', error);
-            validationStatus.innerHTML = `
-                <span class="material-icons" style="color: var(--warning);">warning</span>
-                <span style="color: var(--warning);">Validation unavailable</span>
-            `;
-        } finally {
-            isUpdating = false;
+        } else {
+            const errorMsg = result.error || result.errors?.join(', ') || 'Validation failed';
+            validationStatus.innerHTML = `<span class="material-icons" style="color: var(--error);">error</span><span style="color: var(--error);">${errorMsg}</span>`;
         }
-    }, 1000); // 1 second debounce
+    } catch (error) {
+        console.error('[Editor] Validation error:', error);
+        if (version === contentVersion) {
+            validationStatus.innerHTML = `<span class="material-icons" style="color: var(--warning);">warning</span><span style="color: var(--warning);">Validation unavailable</span>`;
+        }
+    } finally {
+        isUpdating = false;
+    }
+}
+
+// Legacy validateYAML function - wrapper for backwards compatibility
+async function validateYAML() {
+    if (!editor || isUpdating) return;
+    
+    const yamlContent = editor.getValue();
+    if (yamlContent === lastYAML) return;
+    
+    contentVersion++;
+    if (debouncedValidation) {
+        debouncedValidation(yamlContent, contentVersion);
+    }
 }
 
 // Show validation warnings
