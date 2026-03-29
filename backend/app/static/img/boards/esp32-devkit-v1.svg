@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">
+  <!-- ESP32 DevKit V1 Board Image -->
+  <defs>
+    <linearGradient id="boardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a472a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0d2818;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="chipGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2d2d2d;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1a1a1a;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Board Background -->
+  <rect x="50" y="30" width="300" height="240" rx="8" fill="url(#boardGrad)" stroke="#333" stroke-width="2"/>
+  
+  <!-- Main Chip (ESP32-WROOM-32) -->
+  <rect x="140" y="100" width="120" height="80" rx="4" fill="url(#chipGrad)" stroke="#555" stroke-width="1"/>
+  <text x="200" y="145" text-anchor="middle" fill="#ccc" font-family="Arial, sans-serif" font-size="10" font-weight="bold">ESP32</text>
+  <text x="200" y="158" text-anchor="middle" fill="#999" font-family="Arial, sans-serif" font-size="8">WROOM-32</text>
+  
+  <!-- USB-C Connector -->
+  <rect x="180" y="250" width="40" height="15" rx="3" fill="#555" stroke="#777" stroke-width="1"/>
+  <text x="200" y="278" text-anchor="middle" fill="#aaa" font-family="Arial, sans-serif" font-size="7">USB-C</text>
+  
+  <!-- Antenna Area -->
+  <rect x="280" y="100" width="50" height="60" rx="2" fill="#1a1a1a" stroke="#333" stroke-width="1"/>
+  <text x="305" y="135" text-anchor="middle" fill="#666" font-family="Arial, sans-serif" font-size="7">ANT</text>
+  
+  <!-- LED Indicators -->
+  <circle cx="80" cy="260" r="4" fill="#ff0000" opacity="0.8"/>
+  <circle cx="95" cy="260" r="4" fill="#00ff00" opacity="0.8"/>
+  <circle cx="110" cy="260" r="4" fill="#0000ff" opacity="0.8"/>
+  <text x="95" y="278" text-anchor="middle" fill="#aaa" font-family="Arial, sans-serif" font-size="6">LEDs</text>
+  
+  <!-- Pin Headers (Left Side) -->
+  <g fill="#c0c0c0" stroke="#888" stroke-width="0.5">
+    <rect x="55" y="40" width="8" height="3"/>
+    <rect x="55" y="50" width="8" height="3"/>
+    <rect x="55" y="60" width="8" height="3"/>
+    <rect x="55" y="70" width="8" height="3"/>
+    <rect x="55" y="80" width="8" height="3"/>
+    <rect x="55" y="90" width="8" height="3"/>
+    <rect x="55" y="100" width="8" height="3"/>
+    <rect x="55" y="110" width="8" height="3"/>
+    <rect x="55" y="120" width="8" height="3"/>
+    <rect x="55" y="130" width="8" height="3"/>
+    <rect x="55" y="140" width="8" height="3"/>
+    <rect x="55" y="150" width="8" height="3"/>
+    <rect x="55" y="160" width="8" height="3"/>
+    <rect x="55" y="170" width="8" height="3"/>
+    <rect x="55" y="180" width="8" height="3"/>
+    <rect x="55" y="190" width="8" height="3"/>
+  </g>
+  
+  <!-- Pin Headers (Right Side) -->
+  <g fill="#c0c0c0" stroke="#888" stroke-width="0.5">
+    <rect x="337" y="40" width="8" height="3"/>
+    <rect x="337" y="50" width="8" height="3"/>
+    <rect x="337" y="60" width="8" height="3"/>
+    <rect x="337" y="70" width="8" height="3"/>
+    <rect x="337" y="80" width="8" height="3"/>
+    <rect x="337" y="90" width="8" height="3"/>
+    <rect x="337" y="100" width="8" height="3"/>
+    <rect x="337" y="110" width="8" height="3"/>
+    <rect x="337" y="120" width="8" height="3"/>
+    <rect x="337" y="130" width="8" height="3"/>
+    <rect x="337" y="140" width="8" height="3"/>
+    <rect x="337" y="150" width="8" height="3"/>
+    <rect x="337" y="160" width="8" height="3"/>
+    <rect x="337" y="170" width="8" height="3"/>
+    <rect x="337" y="180" width="8" height="3"/>
+    <rect x="337" y="190" width="8" height="3"/>
+  </g>
+  
+  <!-- Pin Labels (Left) -->
+  <g fill="#aaa" font-family="monospace" font-size="5">
+    <text x="67" y="43">3V3</text>
+    <text x="67" y="53">EN</text>
+    <text x="67" y="63">VP</text>
+    <text x="67" y="73">VN</text>
+    <text x="67" y="83">D34</text>
+    <text x="67" y="93">D35</text>
+    <text x="67" y="103">D32</text>
+    <text x="67" y="113">D33</text>
+    <text x="67" y="123">D25</text>
+    <text x="67" y="133">D26</text>
+    <text x="67" y="143">D27</text>
+    <text x="67" y="153">D14</text>
+    <text x="67" y="163">D12</text>
+    <text x="67" y="173">D13</text>
+    <text x="67" y="183">GND</text>
+    <text x="67" y="193">VIN</text>
+  </g>
+  
+  <!-- Pin Labels (Right) -->
+  <g fill="#aaa" font-family="monospace" font-size="5">
+    <text x="330" y="43" text-anchor="end">D23</text>
+    <text x="330" y="53" text-anchor="end">D22</text>
+    <text x="330" y="63" text-anchor="end">TX0</text>
+    <text x="330" y="73" text-anchor="end">RX0</text>
+    <text x="330" y="83" text-anchor="end">D21</text>
+    <text x="330" y="93" text-anchor="end">D19</text>
+    <text x="330" y="103" text-anchor="end">D18</text>
+    <text x="330" y="113" text-anchor="end">D5</text>
+    <text x="330" y="123" text-anchor="end">D17</text>
+    <text x="330" y="133" text-anchor="end">D16</text>
+    <text x="330" y="143" text-anchor="end">D4</text>
+    <text x="330" y="153" text-anchor="end">D2</text>
+    <text x="330" y="163" text-anchor="end">D15</text>
+    <text x="330" y="173" text-anchor="end">GND</text>
+    <text x="330" y="183" text-anchor="end">D13</text>
+    <text x="330" y="193" text-anchor="end">3V3</text>
+  </g>
+  
+  <!-- Board Title -->
+  <text x="200" y="205" text-anchor="middle" fill="#fff" font-family="Arial, sans-serif" font-size="12" font-weight="bold">ESP32 DevKit V1</text>
+  <text x="200" y="220" text-anchor="middle" fill="#888" font-family="Arial, sans-serif" font-size="8">DOIT</text>
+</svg>

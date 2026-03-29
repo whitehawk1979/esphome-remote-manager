@@ -37,8 +37,78 @@ docker-compose up -d
 | **Remote Management** | Web UI for managing ESPHome devices |
 | **MQTT Discovery** | Automatic Home Assistant entity discovery |
 | **YAML Editor** | Built-in editor with syntax highlighting |
+| **YAML Validation** | Real-time validation with cross-reference checking |
+| **Platform-Specific Pins** | GPIO validation for ESP32/ESP8266 platforms |
+| **Board Images** | Visual board reference for common dev boards |
 | **Device Templates** | Quick-start templates for common sensors |
 | **Status Monitoring** | Real-time device status and health |
+
+## 🖼️ Supported Boards
+
+| Board | Image | Description |
+|-------|-------|-------------|
+| **ESP32 DevKit V1** | `esp32-devkit-v1.svg` | ESP32-WROOM-32 Development Board |
+| **ESP32-S3-DevKitC-1** | `esp32-s3-devkitc-1.svg` | ESP32-S3-WROOM-1 Development Board |
+| **ESP32-S3-BOX** | `esp32-s3-box.svg` | ESP32-S3 Development Kit with Display |
+| **ESP32-C3-DevKitM-1** | `esp32-c3-devkitm-1.svg` | ESP32-C3-MINI-1 Development Board |
+| **ESP8266 NodeMCU** | `esp8266-nodemcu.svg` | NodeMCU V2/V3 ESP8266 Development Board |
+| **Wemos D1 Mini** | `esp8266-d1-mini.svg` | Wemos D1 Mini ESP8266 Development Board |
+
+## ✅ YAML Validation Features
+
+### Cross-Reference Validation
+- **ID References**: Validates that all referenced IDs exist in the YAML file
+- **Component Dependencies**: Checks sensor_id, output_id, switch_id references
+- **Unused IDs**: Warns about defined but unused IDs
+
+### Platform-Specific Pin Validation
+- **ESP32**: Validates GPIO 0-39, warns about input-only pins (34-39), flash pins (6-11)
+- **ESP8266**: Validates GPIO 0-16, warns about special pins (0, 2, 15, 16)
+- **Multi-language**: Hungarian and English error messages
+
+### Example Validation Errors
+
+```yaml
+# Error: Cross-reference not found
+sensor:
+  - platform: dht
+    temperature:
+      name: "Temperature"
+      id: temp_sensor
+    humidity:
+      name: "Humidity"
+
+# Warning: GPIO 17 not supported on ESP8266
+# On ESP8266 platform:
+switch:
+  - platform: gpio
+    pin: GPIO17  # Error: GPIO17 is not supported on ESP8266 (valid: 0-16)
+```
+
+## 📁 Directory Structure
+
+```
+/opt/esphome-remote-manager/
+├── docker-compose.yml     # Docker Compose configuration
+├── .env                   # Environment variables
+├── .env.example           # Example configuration
+├── install.sh             # Installation script
+└── backend/
+    └── app/
+        └── static/
+            ├── js/
+            │   ├── yaml-validator.js   # YAML validation (cross-ref, platform pins)
+            │   ├── esphome-schema.js   # ESPHome schema definitions
+            │   └── editor.js           # Monaco editor integration
+            └── img/
+                └── boards/              # Board reference images
+                    ├── esp32-devkit-v1.svg
+                    ├── esp32-s3-devkitc-1.svg
+                    ├── esp32-s3-box.svg
+                    ├── esp32-c3-devkitm-1.svg
+                    ├── esp8266-nodemcu.svg
+                    └── esp8266-d1-mini.svg
+```
 
 ## 🌐 Access Points
 
@@ -115,7 +185,22 @@ The Remote Manager automatically publishes discovery messages to MQTT:
 ├── docker-compose.yml     # Docker Compose configuration
 ├── .env                   # Environment variables
 ├── .env.example           # Example configuration
-└── install.sh             # Installation script
+├── install.sh             # Installation script
+└── backend/
+    └── app/
+        └── static/
+            ├── js/
+            │   ├── yaml-validator.js   # YAML validation (cross-ref, platform pins)
+            │   ├── esphome-schema.js   # ESPHome schema definitions
+            │   └── editor.js           # Monaco editor integration
+            └── img/
+                └── boards/              # Board reference images
+                    ├── esp32-devkit-v1.svg
+                    ├── esp32-s3-devkitc-1.svg
+                    ├── esp32-s3-box.svg
+                    ├── esp32-c3-devkitm-1.svg
+                    ├── esp8266-nodemcu.svg
+                    └── esp8266-d1-mini.svg
 ```
 
 ## 🔒 Security Notes
